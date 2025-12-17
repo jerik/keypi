@@ -2,6 +2,11 @@
 
 Keypirinha-Plugin für direktes Abfragen von Jira Cloud mittels JQL (Jira Query Language) aus dem Keypirinha-Launcher.
 
+## Allgemein
+- Arbeite immer in einem neuen Branch pro Task
+- Niemals direkt auf mein committen / pushen
+- Code und Kommentare  im Quellcode und in Git nur in English
+
 ## Tech Stack
 - **Framework**: Keypirinha Plugin API
 - **Sprache**: Python 3
@@ -40,6 +45,17 @@ keypi/
 # 2. Registrierung bei Keypirinha Package Control
 # 3. Nutzer installieren via Package Control
 ```
+
+## Entwicklungsprozess
+- Definition of Done:
+  - ruff check .
+  - ruff format --check .
+  - pytest
+- Wenn Checks fehlschlagen: iteriere bis grün.
+- Liefere am Ende:
+  - kurze Zusammenfassung
+  - was geändert wurde
+  - wie getestet wurde (Befehle + Ergebnis), style tl;dir
 
 ## Code-Standards
 - **PEP 8** Style Guide für Python-Code befolgen
