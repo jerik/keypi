@@ -66,14 +66,29 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
    - Enter → Ausgewähltes Ticket öffnen
 
 **Alternativen:**
-- [ ] Debouncing (500ms warten vor API-Call)?
-- [ ] Tab statt Enter für Query-Ausführung?
-- [ ] Visuelles Feedback für Modus-Wechsel (z.B. "jqe filter|")?
+- [x] ~~Debouncing (500ms warten vor API-Call)?~~ → Nicht nötig mit Zwei-Phasen-Ansatz
+- [x] ~~Tab statt Enter für Query-Ausführung?~~ → Enter ist intuitiver
+- [x] Visuelles Feedback für Modus-Wechsel:
+  - **JQL-Modus**: `jqe|` (normaler Modus)
+  - **Filter-Modus**: `jqe filter|` (nach Enter auf JQL)
 
-### Offene Fragen
-- [ ] Wie zurück in JQL-Modus? (ESC? Backspace bis leer?)
-- [ ] Soll JQL in der Anzeige sichtbar bleiben? ("jqe filter| ab" vs. "jqe| ab")
-- [ ] Timeout für gecachte Ergebnisse? (z.B. nach 5 Min neue Query nötig?)
+### Offene Fragen → Geklärt
+
+- [x] **Wie zurück in JQL-Modus?**
+  - **ESC**: Setzt alles zurück (von vorne anfangen) → OK
+  - **Einen Schritt zurück** (Filter → JQL): Wäre nett, aber nicht notwendig
+  - **Entscheidung**: ESC setzt zurück, ein Schritt zurück ist optional/nice-to-have
+
+- [x] **Soll JQL in der Anzeige sichtbar bleiben?**
+  - **Entscheidung**: NEIN, JQL nicht im Hintergrund sichtbar
+  - Visuelles Feedback durch Prompt-Änderung:
+    - `jqe|` → JQL-Modus
+    - `jqe filter|` → Filter-Modus
+
+- [x] **Timeout für gecachte Ergebnisse?**
+  - **Entscheidung**: KEIN Cache-Timeout
+  - Grund: Tickets ändern sich → Cache könnte Ergebnisse verfälschen
+  - Ergebnisse bleiben nur für aktuelle Session gecacht
 
 ## 🧪 Testplan
 
@@ -119,7 +134,7 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 
 ---
 
-**Letzte Aktualisierung:** 2025-12-19
+**Letzte Aktualisierung:** 2025-12-19 (Design-Entscheidungen finalisiert)
 
 ---
 
@@ -130,3 +145,9 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 - User wünscht Zwei-Phasen-Modus: JQL-Eingabe + Filter-Modus
 - Keypirinha-Live-Filtering funktioniert, aber Plugin interpretiert Eingaben als JQL-Erweiterung
 - Lösung: State-Management in Plugin (JQL_MODE vs FILTER_MODE)
+
+**2025-12-19 - Design-Entscheidungen getroffen:**
+- ESC setzt komplett zurück (akzeptabel)
+- Visuelles Feedback: `jqe|` (JQL) vs `jqe filter|` (Filter)
+- Kein Cache-Timeout (Tickets ändern sich, Cache würde verfälschen)
+- Ergebnisse nur für Session gecacht, nicht persistent
