@@ -12,7 +12,7 @@ import sys
 _LIB_DIR = os.path.join(os.path.dirname(__file__), "lib")
 sys.path.insert(0, _LIB_DIR)
 
-from jira_client import JiraClient, JiraAuthError, JiraAPIError, JiraNetworkError
+from jira_client import JiraClient, JiraAuthError, JiraAPIError, JiraNetworkError  # noqa: E402
 
 
 class JiraQueryExplorer(kp.Plugin):
@@ -49,7 +49,7 @@ class JiraQueryExplorer(kp.Plugin):
                 short_desc="Query Jira using JQL",
                 target=self.KEYWORD,
                 args_hint=kp.ItemArgsHint.REQUIRED,
-                hit_hint=kp.ItemHitHint.NOARGS
+                hit_hint=kp.ItemHitHint.NOARGS,
             )
         ]
         self.set_catalog(catalog)
@@ -72,26 +72,30 @@ class JiraQueryExplorer(kp.Plugin):
 
         # Check if configuration is valid
         if not self._is_configured():
-            self.set_suggestions([
-                self.create_error_item(
-                    label="Configuration missing",
-                    short_desc="Please configure your Jira credentials in keypi_jqe.ini"
-                )
-            ])
+            self.set_suggestions(
+                [
+                    self.create_error_item(
+                        label="Configuration missing",
+                        short_desc="Please configure your Jira credentials in keypi_jqe.ini",
+                    )
+                ]
+            )
             return
 
         # If no JQL query entered yet, show hint
         if not user_input.strip():
-            self.set_suggestions([
-                self.create_item(
-                    category=kp.ItemCategory.KEYWORD,
-                    label="Enter JQL query...",
-                    short_desc="Example: assignee = currentUser() AND status = Open",
-                    target="hint",
-                    args_hint=kp.ItemArgsHint.FORBIDDEN,
-                    hit_hint=kp.ItemHitHint.IGNORE
-                )
-            ])
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=kp.ItemCategory.KEYWORD,
+                        label="Enter JQL query...",
+                        short_desc="Example: assignee = currentUser() AND status = Open",
+                        target="hint",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                ]
+            )
             return
 
         # Execute JQL query
@@ -110,16 +114,18 @@ class JiraQueryExplorer(kp.Plugin):
             issues = self.jira_client.search_issues(jql_query, max_results=50)
 
             if not issues:
-                self.set_suggestions([
-                    self.create_item(
-                        category=kp.ItemCategory.KEYWORD,
-                        label="No results found",
-                        short_desc=f"No issues found for query: {jql_query}",
-                        target="no_results",
-                        args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.IGNORE
-                    )
-                ])
+                self.set_suggestions(
+                    [
+                        self.create_item(
+                            category=kp.ItemCategory.KEYWORD,
+                            label="No results found",
+                            short_desc=f"No issues found for query: {jql_query}",
+                            target="no_results",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
+                        )
+                    ]
+                )
                 return
 
             # Create suggestion items from results
@@ -140,10 +146,10 @@ class JiraQueryExplorer(kp.Plugin):
                         category=self.ITEMCAT_RESULT,
                         label=label,
                         short_desc=short_desc,
-                        target=issue['url'],
+                        target=issue["url"],
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.IGNORE,
-                        data_bag=issue['key']
+                        data_bag=issue["key"],
                     )
                 )
 
@@ -151,39 +157,36 @@ class JiraQueryExplorer(kp.Plugin):
 
         except JiraAuthError as e:
             self.warn(str(e))
-            self.set_suggestions([
-                self.create_error_item(
-                    label="Authentication failed",
-                    short_desc=str(e)
-                )
-            ])
+            self.set_suggestions(
+                [
+                    self.create_error_item(
+                        label="Authentication failed", short_desc=str(e)
+                    )
+                ]
+            )
 
         except JiraAPIError as e:
             self.warn(str(e))
-            self.set_suggestions([
-                self.create_error_item(
-                    label="API error",
-                    short_desc=str(e)
-                )
-            ])
+            self.set_suggestions(
+                [self.create_error_item(label="API error", short_desc=str(e))]
+            )
 
         except JiraNetworkError as e:
             self.warn(str(e))
-            self.set_suggestions([
-                self.create_error_item(
-                    label="Network error",
-                    short_desc=str(e)
-                )
-            ])
+            self.set_suggestions(
+                [self.create_error_item(label="Network error", short_desc=str(e))]
+            )
 
         except Exception as e:
             self.err(f"Unexpected error: {str(e)}")
-            self.set_suggestions([
-                self.create_error_item(
-                    label="Unexpected error",
-                    short_desc=f"An error occurred: {str(e)}"
-                )
-            ])
+            self.set_suggestions(
+                [
+                    self.create_error_item(
+                        label="Unexpected error",
+                        short_desc=f"An error occurred: {str(e)}",
+                    )
+                ]
+            )
 
     def on_execute(self, item, action):
         """
@@ -214,32 +217,20 @@ class JiraQueryExplorer(kp.Plugin):
         settings = self.load_settings()
 
         # Read main configuration
-        self.jira_url = settings.get_stripped(
-            "jira_url",
-            section="main",
-            fallback=""
-        )
+        self.jira_url = settings.get_stripped("jira_url", section="main", fallback="")
 
         self.email = settings.get_stripped(
-            "atlassian_email",
-            section="main",
-            fallback=""
+            "atlassian_email", section="main", fallback=""
         )
 
         self.api_token = settings.get_stripped(
-            "atlassian_api_key",
-            section="main",
-            fallback=""
+            "atlassian_api_key", section="main", fallback=""
         )
 
         # Initialize Jira client if credentials are available
         if self._is_configured():
             try:
-                self.jira_client = JiraClient(
-                    self.jira_url,
-                    self.email,
-                    self.api_token
-                )
+                self.jira_client = JiraClient(self.jira_url, self.email, self.api_token)
                 self.info("Jira client initialized successfully")
             except Exception as e:
                 self.err(f"Failed to initialize Jira client: {str(e)}")
