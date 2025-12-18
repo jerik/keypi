@@ -50,7 +50,7 @@ class JiraClient:
             JiraNetworkError: Network/connection error
         """
         # Construct API endpoint
-        endpoint = f"{self.jira_url}/rest/api/3/search"
+        endpoint = f"{self.jira_url}/rest/api/3/search/jql"
 
         # Define fields to retrieve
         fields = [
