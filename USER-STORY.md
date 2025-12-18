@@ -44,25 +44,64 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 ## 🔧 Technische Details
 
 ### Betroffene Dateien
-- `Datei 1`: Was wird geändert
-- `Datei 2`: Was wird geändert
+- `keypi_jqe/__init__.py`:
+  - `on_suggest()`: Zwei-Phasen-Logik implementieren (JQL-Eingabe vs. Filter-Modus)
+  - Neue Variable: `_current_mode` (JQL vs. FILTER)
+  - Neue Variable: `_current_results` (Cache für gefilterte Anzeige)
+  - `_execute_jql_query()`: Nur aufrufen wenn Enter in JQL-Modus
 
 ### Design-Entscheidungen
-- [Wichtige technische Entscheidungen]
+
+**Zwei-Phasen-Ansatz:**
+1. **Phase 1: JQL-Eingabe-Modus**
+   - User tippt JQL (z.B. "creator = currentUser()")
+   - **KEINE API-Calls während Eingabe** (verhindert 400 Fehler)
+   - Hint anzeigen: "Press Enter to execute query"
+   - Enter → JQL senden + in Filter-Modus wechseln
+
+2. **Phase 2: Filter-Modus**
+   - Ergebnisse sind geladen und gecacht
+   - User tippt (z.B. "ab") → filtert gecachte Ergebnisse
+   - Kein neuer API-Call!
+   - Enter → Ausgewähltes Ticket öffnen
+
+**Alternativen:**
+- [ ] Debouncing (500ms warten vor API-Call)?
+- [ ] Tab statt Enter für Query-Ausführung?
+- [ ] Visuelles Feedback für Modus-Wechsel (z.B. "jqe filter|")?
 
 ### Offene Fragen
-- [ ] Frage 1?
-- [ ] Frage 2?
+- [ ] Wie zurück in JQL-Modus? (ESC? Backspace bis leer?)
+- [ ] Soll JQL in der Anzeige sichtbar bleiben? ("jqe filter| ab" vs. "jqe| ab")
+- [ ] Timeout für gecachte Ergebnisse? (z.B. nach 5 Min neue Query nötig?)
 
 ## 🧪 Testplan
 
 ### Manuelle Tests
-- [ ] Test 1
-- [ ] Test 2
+- [ ] JQL eingeben → KEINE API-Calls (Logs prüfen)
+- [ ] Enter drücken → Query wird ausgeführt (nur 1 API-Call)
+- [ ] Ergebnisse erscheinen
+- [ ] "ab" tippen → Liste filtert sich (kein neuer API-Call)
+- [ ] Enter → Ausgewähltes Ticket öffnet im Browser
+- [ ] Test mit leerer Query → Fehlermeldung
+- [ ] Test mit ungültiger JQL → Fehlermeldung nach Enter
+- [ ] Test mit 0 Ergebnissen → "No results" Meldung
 
 ## 📝 Notizen
 
-[Zusätzliche Notizen]
+**Aktuelles Problem:**
+- Jeder Tastendruck sendet unfertige JQL → viele 400 Bad Request Fehler
+- Enter führt erstes Ergebnis aus (statt Filter-Modus)
+- Weitere Eingaben erweitern JQL (statt Ergebnisse zu filtern)
+
+**Synergien mit BACKLOG.md:**
+- Query Historie Feature könnte erfolgreiche Queries cachen
+- JQL Shortcuts würden auch von diesem Zwei-Phasen-Ansatz profitieren
+
+**Performance-Gewinn:**
+- Drastisch weniger API-Calls (aktuell: >10 pro Query, künftig: 1 pro Query)
+- Bessere Rate-Limiting-Compliance
+- Schnelleres Filtern (lokal statt API)
 
 ---
 
@@ -80,4 +119,14 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 
 ---
 
-**Letzte Aktualisierung:** YYYY-MM-DD
+**Letzte Aktualisierung:** 2025-12-19
+
+---
+
+## 💬 Dialog-Historie (Erkenntnisse)
+
+**2025-12-19 - Problemanalyse:**
+- Aktuell werden bei jedem Tastendruck API-Calls gemacht → viele Fehler
+- User wünscht Zwei-Phasen-Modus: JQL-Eingabe + Filter-Modus
+- Keypirinha-Live-Filtering funktioniert, aber Plugin interpretiert Eingaben als JQL-Erweiterung
+- Lösung: State-Management in Plugin (JQL_MODE vs FILTER_MODE)
