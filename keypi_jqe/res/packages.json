@@ -1,0 +1,21 @@
+{
+    "schema_version": "2.0",
+    "packages": [
+        {
+            "name": "KeyPi-JQE",
+            "description": "Jira Query Explorer - Query Jira Cloud using JQL directly from Keypirinha",
+            "author": "Erik Heinz",
+            "homepage": "https://github.com/jerik/keypi",
+            "license": "MIT",
+            "tags": ["jira", "jql", "query", "explorer", "cloud"],
+            "releases": [
+                {
+                    "version": "1.0.0",
+                    "url": "https://github.com/jerik/keypi/releases/download/v1.0.0/KeyPi-JQE.keypirinha-package",
+                    "date": "2025-12-17",
+                    "platforms": ["windows"]
+                }
+            ]
+        }
+    ]
+}
