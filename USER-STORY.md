@@ -1,31 +1,45 @@
-# User Story: [Feature Name]
+# User Story: Filerung in der Jira-Ergebnisliste
 
 **Status:** 📝 In Planung
-**Erstellt:** YYYY-MM-DD
+**Erstellt:** 2025-12-19
 
 ---
 
-## 🎯 Ziel
+## 🎯 Beschreibung
 
-[Beschreibe das Ziel des Features aus Nutzersicht]
+Wenn ich als User in der launchbox die jql geschrieben habe, wird mir die Ergebnisliste angezeigt. Diese kann lang sein und diese möchte ich filtern. D.h. das JQL wird nicht mehr verändert, sondern durch weitere Eingaben kann ich in der bestehend Ergebnisliste filtern. Wenn ich die Buchstaben 'ab' eingebe, wird in der ergebnisliste nur noch die Einträge angezeigt die 'ab' besitzen.
+Eine idee, wenn das jql abgeschlossen ist drückt man Enter. Anstatt das erste eregbnis auszuwählen, geht man in den Filtermodus und kann in der Ergebnisliste filtern. Wenn man dann Enter drückt wird das ausgewählte Eintrag ausgeführt. 
 
-## 📋 Anforderungen
+1. launchbox jqe aufrufen und query eingeben
+[jqe| creator = currentUser()] 
+| entry a|
+| entry ab|
+| entry c|
+| entry abc|
 
-### Funktional
-- [ ] Anforderung 1
-- [ ] Anforderung 2
-- [ ] Anforderung 3
+2. In dern Filtermodus wechseln
+[jqe| creator = currentUser()] + Enter
+[jqe filter| ab]
+| entry ab|
+| entry abc|
 
-### Nicht-Funktional
-- [ ] Performance
-- [ ] Fehlerbehandlung
-- [ ] Backward Compatibility
+3. Ausführen 
+[jqe filter| ab]
+| entry ab |
+| entry abc | <-- Enter
 
-## ✅ Akzeptanzkriterien
+URL des Entry abc wird aufgerufen
 
-1. **Given** [Ausgangssituation]
-   **When** [Aktion]
-   **Then** [Erwartetes Ergebnis]
+
+## Akzeptanzkriterien 
+
+1. Als User möchte ich nach meiner Eingabe der jql diese mit Enter oder Tabulator oder ähnlich abschliessen, 
+damit ich in eine Fitltermodus wechseln kann, um die Ergebnisliste durch weitere eingaben zu filtern. 
+
+2. Als User möchte ich im Filtermodus weitere Eingaben tätigen, damit diese Ergebnis aus der jql anhand dieser Eingaben gefiltert werden,
+damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Ticket finde.
+
+
 
 ## 🔧 Technische Details
 
