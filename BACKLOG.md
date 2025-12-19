@@ -29,6 +29,8 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 ---
 
 ## Weitere Ideen
+### JQL selbst im Browser aufrufen
+Das genutzte JQL soll auch aufgerufen werden können. Erste Ideen, via Shortcut oder eigenem Eintrag.
 
 ### Pagination Support
 Mehr als 50 Ergebnisse pro Query anzeigen.
