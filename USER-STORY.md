@@ -53,12 +53,27 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
     - `_current_jql`: String (letzte ausgeführte JQL-Query)
     - `_cached_results`: List (alle Jira-Ergebnisse vom letzten API-Call)
     - `_filter_text`: String (aktueller Filter-Text im Filter-Modus)
+    - `_keyword`: String (konfigurierbares Keyword, default: "jqe")
+
+- `keypi_jqe/res/keypi_jqe.ini`:
+  - **Neue Config-Option**:
+    ```ini
+    [main]
+    keyword = jqe  # Konfigurierbares Keyword (default: jqe)
+    ```
 
   - **Methoden-Änderungen**:
+    - `_load_config()`:
+      - Keyword aus Config lesen (fallback: "jqe")
+      - `self._keyword = settings.get_stripped("keyword", section="main", fallback="jqe")`
+    - `on_catalog()`:
+      - Catalog Item mit konfiguriertem Keyword erstellen
+      - `label=self._keyword` statt hardcoded "jqe"
     - `on_suggest()`:
       - State-Machine implementieren (Mode-Switching)
       - Im JQL-Modus: Nur Hint anzeigen, KEINE API-Calls
       - Im Filter-Modus: Gecachte Ergebnisse filtern
+      - Visuelles Feedback mit konfigurierbarem Keyword
     - `on_execute()`:
       - Im JQL-Modus: Query ausführen + Mode wechseln
       - Im Filter-Modus: Ticket öffnen
@@ -113,6 +128,8 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 ## 🧪 Testplan
 
 ### Manuelle Tests
+
+**Filter-Funktionalität:**
 - [ ] JQL eingeben → KEINE API-Calls (Logs prüfen)
 - [ ] Enter drücken → Query wird ausgeführt (nur 1 API-Call)
 - [ ] Ergebnisse erscheinen
@@ -121,6 +138,13 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 - [ ] Test mit leerer Query → Fehlermeldung
 - [ ] Test mit ungültiger JQL → Fehlermeldung nach Enter
 - [ ] Test mit 0 Ergebnissen → "No results" Meldung
+
+**Konfigurierbares Keyword:**
+- [ ] Standard-Keyword "jqe" funktioniert
+- [ ] Keyword in Config ändern (z.B. "jira")
+- [ ] Keypirinha neu starten
+- [ ] Neues Keyword funktioniert
+- [ ] Altes Keyword "jqe" funktioniert nicht mehr
 
 ## 📝 Notizen
 
@@ -144,10 +168,13 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 
 ### Implementation Checklist
 
-**Phase 1: State Management**
-- [ ] Instanzvariablen hinzufügen (_current_mode, _current_jql, _cached_results, _filter_text)
+**Phase 1: State Management & Configuration**
+- [ ] Instanzvariablen hinzufügen (_current_mode, _current_jql, _cached_results, _filter_text, _keyword)
 - [ ] Mode-Enum definieren (JQL_MODE = "jql", FILTER_MODE = "filter")
 - [ ] Initialisierung in `__init__()` oder `on_start()`
+- [ ] Config-Option "keyword" hinzufügen (keypi_jqe.ini)
+- [ ] `_load_config()` erweitern: Keyword aus Config lesen
+- [ ] `on_catalog()` anpassen: Dynamisches Keyword verwenden
 
 **Phase 2: JQL-Modus**
 - [ ] `on_suggest()` anpassen: Im JQL-Modus KEINE API-Calls
