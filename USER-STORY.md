@@ -48,10 +48,27 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 
 ### Betroffene Dateien
 - `keypi_jqe/__init__.py`:
-  - `on_suggest()`: Zwei-Phasen-Logik implementieren (JQL-Eingabe vs. Filter-Modus)
-  - Neue Variable: `_current_mode` (JQL vs. FILTER)
-  - Neue Variable: `_current_results` (Cache für gefilterte Anzeige)
-  - `_execute_jql_query()`: Nur aufrufen wenn Enter in JQL-Modus
+  - **Neue Instanzvariablen**:
+    - `_current_mode`: Enum/String (JQL_MODE vs FILTER_MODE)
+    - `_current_jql`: String (letzte ausgeführte JQL-Query)
+    - `_cached_results`: List (alle Jira-Ergebnisse vom letzten API-Call)
+    - `_filter_text`: String (aktueller Filter-Text im Filter-Modus)
+
+  - **Methoden-Änderungen**:
+    - `on_suggest()`:
+      - State-Machine implementieren (Mode-Switching)
+      - Im JQL-Modus: Nur Hint anzeigen, KEINE API-Calls
+      - Im Filter-Modus: Gecachte Ergebnisse filtern
+    - `on_execute()`:
+      - Im JQL-Modus: Query ausführen + Mode wechseln
+      - Im Filter-Modus: Ticket öffnen
+    - `_execute_jql_query()`:
+      - Nur aufrufen wenn explizit gefordert (Enter im JQL-Modus)
+      - Ergebnisse in `_cached_results` speichern
+    - Neue Methode: `_filter_results(filter_text)`:
+      - Filtert `_cached_results` lokal
+      - Case-insensitive Matching
+      - Sucht in: TicketID, Summary, Status
 
 ### Design-Entscheidungen
 
@@ -126,11 +143,28 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 ## 🎬 Umsetzung
 
 ### Implementation Checklist
-- [ ] Feature implementiert
-- [ ] Tests durchgeführt
+
+**Phase 1: State Management**
+- [ ] Instanzvariablen hinzufügen (_current_mode, _current_jql, _cached_results, _filter_text)
+- [ ] Mode-Enum definieren (JQL_MODE = "jql", FILTER_MODE = "filter")
+- [ ] Initialisierung in `__init__()` oder `on_start()`
+
+**Phase 2: JQL-Modus**
+- [ ] `on_suggest()` anpassen: Im JQL-Modus KEINE API-Calls
+- [ ] Hint anzeigen: "Press Enter to execute query"
+- [ ] `on_execute()`: Enter → Query ausführen + Mode wechseln
+
+**Phase 3: Filter-Modus**
+- [ ] `_filter_results()` Methode implementieren
+- [ ] `on_suggest()`: Im Filter-Modus gecachte Ergebnisse filtern
+- [ ] Visuelles Feedback: Catalog Item mit "jqe filter|" Prefix
+- [ ] `on_execute()`: Im Filter-Modus Ticket öffnen
+
+**Phase 4: Testing & Finalisierung**
+- [ ] Manuelle Tests durchgeführt (siehe Testplan)
 - [ ] DoD: ruff check, ruff format
 - [ ] documentation.md aktualisiert
-- [ ] Changelog updated
+- [ ] Changelog updated (keypi_jqe/res/changelog/)
 
 ### Dialog-Historie
 [Diskussionen und Entscheidungen während der Entwicklung]
@@ -154,3 +188,9 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 - Visuelles Feedback: `jqe|` (JQL) vs `jqe filter|` (Filter)
 - Kein Cache-Timeout (Tickets ändern sich, Cache würde verfälschen)
 - Ergebnisse nur für Session gecacht, nicht persistent
+
+**Implementierungs-Notizen:**
+- Filter ist case-insensitive (bessere UX)
+- Filter sucht in: TicketID, Summary, Status (nicht in allen Feldern)
+- Mode-Reset bei: ESC, neuer "jqe" Aufruf, Plugin-Neustart
+- Cached Results werden bei jedem neuen API-Call überschrieben
