@@ -6,6 +6,8 @@ Die documentation.md sollte nochmal angepasst werden.
 Mit den letzten Erkenntnissen macht es sinn die user-story nochmal anzupassen?
 Vielleicht sollten wir die user-story erweitern um Erkenntnisse / Lessons learned aus der Umsetzung, die hilfreich sind. Was meinst du?
 
+Ich habe auch 2 branches offen. Woher weiss ich welche ich schon per PR integriete habe. Wie können wir da nachverfolgbar machen. 
+
 
 
 # User Story: Filerung in der Jira-Ergebnisliste
