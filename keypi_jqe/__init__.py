@@ -141,14 +141,14 @@ class JiraQueryExplorer(kp.Plugin):
                     ]
                 )
             else:
-                # User is typing JQL - show "Press Tab" hint (NO API call)
+                # User is typing JQL - show "Press Enter" hint (NO API call)
                 self.dbg(f"JQL_MODE: typing '{user_input.strip()[:30]}...'")
                 self.set_suggestions(
                     [
                         self.create_item(
                             category=self.ITEMCAT_QUERY,
                             label=f"{self._keyword}: {user_input.strip()}",
-                            short_desc="Press Tab to execute query",
+                            short_desc="Press Enter to execute query",
                             target="execute_jql",
                             args_hint=kp.ItemArgsHint.REQUIRED,
                             hit_hint=kp.ItemHitHint.KEEPALL,
