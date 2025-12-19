@@ -99,6 +99,12 @@ class JiraQueryExplorer(kp.Plugin):
             )
             return
 
+        # IMPORTANT: Reset to JQL mode if user re-invokes keyword
+        # This allows starting a new query even if stuck in FILTER mode
+        if len(items_chain) == 1 and self._current_mode == self.MODE_FILTER:
+            self.info("User re-invoked keyword - resetting to JQL mode for new query")
+            self._reset_to_jql_mode()
+
         # Check if user pressed Tab on the "execute_jql" item
         # This happens when items_chain has 2 items: [keyword, execute_jql]
         # IMPORTANT: Only execute in JQL mode, not in FILTER mode!
