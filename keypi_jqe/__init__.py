@@ -150,8 +150,8 @@ class JiraQueryExplorer(kp.Plugin):
                             label=f"{self._keyword}: {user_input.strip()}",
                             short_desc="Press Tab to execute query",
                             target="execute_jql",
-                            args_hint=kp.ItemArgsHint.ACCEPTED,
-                            hit_hint=kp.ItemHitHint.IGNORE,
+                            args_hint=kp.ItemArgsHint.REQUIRED,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
                             data_bag=user_input.strip(),
                         )
                     ]
