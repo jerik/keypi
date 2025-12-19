@@ -29,6 +29,11 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 ---
 
 ## Weitere Ideen
+### Status des Tickes und oder Type des Tickets mit einem farblichen Icon im Eintrag sichtbar machen 
+Icon ST, T, ST, SR, B, ...
+Farbe: Grau = offen, erfasst, Blau = in Arbeit, Grün = erledigt, abgschlossen. 
+Die Farbe und das mapping zum status sollte konfigurierbar sein
+
 ### JQL selbst im Browser aufrufen
 Das genutzte JQL soll auch aufgerufen werden können. Erste Ideen, via Shortcut oder eigenem Eintrag.
 
@@ -49,6 +54,18 @@ Tickets als Favoriten markieren für schnellen Zugriff.
 
 ### Ticket-Aktionen
 Status ändern, Kommentare hinzufügen direkt aus Keypirinha.
+
+### Refactoring
+Umbenennen des Repositories in keypirinha-jql
+Entsprechend den classennamen etc anpassen
+
+## Installierbar mittels PackageControll machen. 
+https://github.com/ueffel/Keypirinha-PackageControl
+Overview
+The default repository is maintained by myself, it's called "ueffel's Package Repository". An overview of available packages can be viewed [here](https://ue.spdns.de/packagecontrol/).
+
+Submit your own package
+If you created your own package and want it to be available via PackageControl to other Keypirinha users you can submit it [here]/https://ue.spdns.de/packagecontrol/new_package). The preferred way of publishing is GitHub. Your package repository should have the ready-to-use .keypirinha-package file in the release section. The package repository looks for the newest release (not pre-release) that has such a file and exposes it.
 
 ---
 
