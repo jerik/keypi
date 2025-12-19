@@ -75,7 +75,7 @@ class JiraQueryExplorer(kp.Plugin):
             items_chain: Chain of selected items
         """
         self.info(
-            f"[on_suggest] START - user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)} items"
+            f"[on_suggest] START - user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)} items, chain_len={len(items_chain) if items_chain else 0}"
         )
 
         # Only process if our keyword is in the chain
@@ -101,6 +101,22 @@ class JiraQueryExplorer(kp.Plugin):
             )
             return
 
+        # Check if user pressed Tab on the "execute_jql" item
+        # This happens when items_chain has 2 items: [keyword, execute_jql]
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_QUERY
+            and items_chain[-1].target() == "execute_jql"
+        ):
+            jql_query = items_chain[-1].data_bag()
+            self.info(
+                f"[on_suggest] User pressed Tab on execute_jql item, executing query: '{jql_query}'"
+            )
+            self._execute_jql_query(jql_query)
+            # After query execution, on_suggest will be called again
+            # and we'll be in FILTER mode with cached results
+            return
+
         self.info(f"[on_suggest] MODE={self._current_mode}, JQL='{self._current_jql}'")
 
         # State machine: Handle JQL mode vs Filter mode
@@ -123,7 +139,7 @@ class JiraQueryExplorer(kp.Plugin):
                     ]
                 )
             else:
-                # User is typing JQL - show "Press Enter" hint (NO API call)
+                # User is typing JQL - show "Press Tab" hint (NO API call)
                 self.info(
                     f"[on_suggest] JQL_MODE: User typing JQL='{user_input.strip()}', NO API CALL"
                 )
@@ -132,9 +148,9 @@ class JiraQueryExplorer(kp.Plugin):
                         self.create_item(
                             category=self.ITEMCAT_QUERY,
                             label=f"{self._keyword}: {user_input.strip()}",
-                            short_desc="Press Enter to execute query",
+                            short_desc="Press Tab to execute query",
                             target="execute_jql",
-                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            args_hint=kp.ItemArgsHint.ACCEPTED,
                             hit_hint=kp.ItemHitHint.IGNORE,
                             data_bag=user_input.strip(),
                         )
@@ -343,14 +359,18 @@ class JiraQueryExplorer(kp.Plugin):
         )
         self.info(f"[on_execute] Current mode={self._current_mode}")
 
-        # Handle JQL mode - Execute query when Enter is pressed
+        # Handle JQL mode - Execute query when Enter is pressed (fallback)
+        # NOTE: Tab is the recommended way to execute queries (keeps Launchbox open)
+        # Enter still works but will close the Launchbox (Keypirinha behavior)
         if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_jql":
             jql_query = item.data_bag()
-            self.info(f"[on_execute] JQL mode - Executing query: '{jql_query}'")
+            self.info(
+                f"[on_execute] JQL mode - User pressed Enter (use Tab instead!), executing query: '{jql_query}'"
+            )
             self._execute_jql_query(jql_query)
-            self.info(f"[on_execute] Query executed, mode is now: {self._current_mode}")
-            # REMOVED: self.set_suggestions([]) - This was closing the Launchbox!
-            # The suggestions are already set by _execute_jql_query()
+            self.info(
+                f"[on_execute] Query executed, mode is now: {self._current_mode} (Launchbox will close, press Tab next time!)"
+            )
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         elif item.category() == self.ITEMCAT_RESULT:
