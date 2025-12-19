@@ -9,6 +9,7 @@
 
 Wenn ich als User in der launchbox die jql geschrieben habe, wird mir die Ergebnisliste angezeigt. Diese kann lang sein und diese möchte ich filtern. D.h. das JQL wird nicht mehr verändert, sondern durch weitere Eingaben kann ich in der bestehend Ergebnisliste filtern. Wenn ich die Buchstaben 'ab' eingebe, wird in der ergebnisliste nur noch die Einträge angezeigt die 'ab' besitzen.
 Eine idee, wenn das jql abgeschlossen ist drückt man Enter. Anstatt das erste eregbnis auszuwählen, geht man in den Filtermodus und kann in der Ergebnisliste filtern. Wenn man dann Enter drückt wird das ausgewählte Eintrag ausgeführt. 
+Das command jqe soll konfigurierbar sein. Im Standard soll es mit jqe vorkonfiguriert sein. 
 
 1. launchbox jqe aufrufen und query eingeben
 [jqe| creator = currentUser()] 
@@ -38,6 +39,8 @@ damit ich in eine Fitltermodus wechseln kann, um die Ergebnisliste durch weitere
 
 2. Als User möchte ich im Filtermodus weitere Eingaben tätigen, damit diese Ergebnis aus der jql anhand dieser Eingaben gefiltert werden,
 damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Ticket finde.
+
+3. Als User möchte ich das Kommando 'jqe' ändern können, damit ich mir selbst ein entsprechendes Kommando hinterlegen kann. Standardmässig soll das Kommando mit 'jqe' vorbelegt sein. 
 
 
 
