@@ -74,16 +74,23 @@ class JiraQueryExplorer(kp.Plugin):
             user_input: Current user input string
             items_chain: Chain of selected items
         """
+        self.info(
+            f"[on_suggest] START - user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)} items"
+        )
+
         # Only process if our keyword is in the chain
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
+            self.info("[on_suggest] Not our keyword, returning")
             return
 
         # Load configuration if not already loaded
         if not self.jira_client:
+            self.info("[on_suggest] Jira client not loaded, loading config...")
             self._load_config()
 
         # Check if configuration is valid
         if not self._is_configured():
+            self.warn("[on_suggest] Configuration missing!")
             self.set_suggestions(
                 [
                     self.create_error_item(
@@ -94,11 +101,15 @@ class JiraQueryExplorer(kp.Plugin):
             )
             return
 
+        self.info(f"[on_suggest] MODE={self._current_mode}, JQL='{self._current_jql}'")
+
         # State machine: Handle JQL mode vs Filter mode
         if self._current_mode == self.MODE_JQL:
+            self.info("[on_suggest] In JQL_MODE")
             # JQL Input Mode - NO API calls during typing
             if not user_input.strip():
                 # Show hint if no input
+                self.info("[on_suggest] JQL_MODE: Empty input, showing hint")
                 self.set_suggestions(
                     [
                         self.create_item(
@@ -113,6 +124,9 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             else:
                 # User is typing JQL - show "Press Enter" hint (NO API call)
+                self.info(
+                    f"[on_suggest] JQL_MODE: User typing JQL='{user_input.strip()}', NO API CALL"
+                )
                 self.set_suggestions(
                     [
                         self.create_item(
@@ -128,18 +142,33 @@ class JiraQueryExplorer(kp.Plugin):
                 )
 
         elif self._current_mode == self.MODE_FILTER:
+            self.info(
+                f"[on_suggest] In FILTER_MODE - {len(self._cached_results)} cached results"
+            )
             # Filter Mode - filter cached results locally
             filter_text = user_input.strip()
             self._filter_text = filter_text
 
             if not filter_text:
                 # No filter - show all cached results
+                self.info(
+                    f"[on_suggest] FILTER_MODE: No filter text, showing all {len(self._cached_results)} results"
+                )
                 filtered_results = self._cached_results
             else:
                 # Filter cached results
+                self.info(
+                    f"[on_suggest] FILTER_MODE: Filtering with text='{filter_text}'"
+                )
                 filtered_results = self._filter_results(filter_text)
+                self.info(
+                    f"[on_suggest] FILTER_MODE: Filtered to {len(filtered_results)} results"
+                )
 
             if not filtered_results:
+                self.info(
+                    f"[on_suggest] FILTER_MODE: No matching results for filter='{filter_text}'"
+                )
                 self.set_suggestions(
                     [
                         self.create_item(
@@ -154,6 +183,9 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             else:
                 # Display filtered results
+                self.info(
+                    f"[on_suggest] FILTER_MODE: Displaying {len(filtered_results)} filtered results"
+                )
                 suggestions = []
                 for issue in filtered_results:
                     label = f"{issue['key']}: [{issue['status']}] {issue['summary']}"
@@ -175,6 +207,8 @@ class JiraQueryExplorer(kp.Plugin):
                     )
                 self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
+        self.info("[on_suggest] END")
+
     def _execute_jql_query(self, jql_query):
         """
         Execute JQL query and cache results
@@ -182,19 +216,31 @@ class JiraQueryExplorer(kp.Plugin):
         Args:
             jql_query: JQL query string
         """
+        self.info(f"[_execute_jql_query] START - jql='{jql_query}'")
         try:
             # Query Jira API
+            self.info("[_execute_jql_query] Calling Jira API...")
             issues = self.jira_client.search_issues(jql_query, max_results=50)
+            self.info(
+                f"[_execute_jql_query] API returned {len(issues) if issues else 0} issues"
+            )
 
             # Cache the JQL and results
             self._current_jql = jql_query
             self._cached_results = issues if issues else []
 
             # Switch to FILTER mode
+            old_mode = self._current_mode
             self._current_mode = self.MODE_FILTER
             self._filter_text = ""
+            self.info(
+                f"[_execute_jql_query] Mode switched: {old_mode} -> {self._current_mode}"
+            )
 
             if not issues:
+                self.info(
+                    "[_execute_jql_query] No results found, showing error message"
+                )
                 self.set_suggestions(
                     [
                         self.create_item(
@@ -207,10 +253,13 @@ class JiraQueryExplorer(kp.Plugin):
                         )
                     ]
                 )
-                self.info(f"JQL query returned 0 results: {jql_query}")
+                self.info("[_execute_jql_query] END - 0 results")
                 return
 
             # Create suggestion items from results
+            self.info(
+                f"[_execute_jql_query] Creating {len(issues)} suggestion items..."
+            )
             suggestions = []
             for issue in issues:
                 # Format: TICKET-ID: [Status] Summary
@@ -235,13 +284,15 @@ class JiraQueryExplorer(kp.Plugin):
                     )
                 )
 
+            self.info(f"[_execute_jql_query] Setting {len(suggestions)} suggestions")
             self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
             self.info(
-                f"JQL query executed successfully: {jql_query} ({len(issues)} results)"
+                f"[_execute_jql_query] END - Success: {len(issues)} results cached"
             )
 
         except JiraAuthError as e:
-            self.warn(str(e))
+            self.err(f"[_execute_jql_query] JiraAuthError: {str(e)}")
+            self._current_mode = self.MODE_JQL
             self.set_suggestions(
                 [
                     self.create_error_item(
@@ -251,19 +302,25 @@ class JiraQueryExplorer(kp.Plugin):
             )
 
         except JiraAPIError as e:
-            self.warn(str(e))
+            self.err(f"[_execute_jql_query] JiraAPIError: {str(e)}")
+            self._current_mode = self.MODE_JQL
             self.set_suggestions(
                 [self.create_error_item(label="API error", short_desc=str(e))]
             )
 
         except JiraNetworkError as e:
-            self.warn(str(e))
+            self.err(f"[_execute_jql_query] JiraNetworkError: {str(e)}")
+            self._current_mode = self.MODE_JQL
             self.set_suggestions(
                 [self.create_error_item(label="Network error", short_desc=str(e))]
             )
 
         except Exception as e:
-            self.err(f"Unexpected error: {str(e)}")
+            self.err(f"[_execute_jql_query] Unexpected error: {str(e)}")
+            import traceback
+
+            self.err(f"[_execute_jql_query] Traceback: {traceback.format_exc()}")
+            self._current_mode = self.MODE_JQL
             self.set_suggestions(
                 [
                     self.create_error_item(
@@ -281,29 +338,48 @@ class JiraQueryExplorer(kp.Plugin):
             item: Selected catalog item
             action: Action to execute
         """
+        self.info(
+            f"[on_execute] START - item.category={item.category()}, item.target={item.target()}"
+        )
+        self.info(f"[on_execute] Current mode={self._current_mode}")
+
         # Handle JQL mode - Execute query when Enter is pressed
         if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_jql":
             jql_query = item.data_bag()
-            self.info(f"Executing JQL query: {jql_query}")
+            self.info(f"[on_execute] JQL mode - Executing query: '{jql_query}'")
             self._execute_jql_query(jql_query)
-            # Set Keypirinha back to search mode with our keyword
-            # This triggers on_suggest() again in FILTER mode
-            self.set_suggestions([])
+            self.info(f"[on_execute] Query executed, mode is now: {self._current_mode}")
+            # REMOVED: self.set_suggestions([]) - This was closing the Launchbox!
+            # The suggestions are already set by _execute_jql_query()
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         elif item.category() == self.ITEMCAT_RESULT:
             url = item.target()
+            ticket_key = item.data_bag()
+            self.info(f"[on_execute] FILTER mode - Opening ticket {ticket_key}: {url}")
             kpu.shell_execute(url)
             # Reset to JQL mode after opening ticket
             self._reset_to_jql_mode()
+            self.info(
+                f"[on_execute] Ticket opened, reset to mode: {self._current_mode}"
+            )
+        else:
+            self.warn(
+                f"[on_execute] Unknown item category or target: {item.category()}/{item.target()}"
+            )
+
+        self.info("[on_execute] END")
 
     def _reset_to_jql_mode(self):
         """Reset plugin state to JQL mode"""
+        self.info(
+            f"[_reset_to_jql_mode] START - clearing {len(self._cached_results)} cached results"
+        )
         self._current_mode = self.MODE_JQL
         self._current_jql = ""
         self._cached_results = []
         self._filter_text = ""
-        self.info("Reset to JQL mode")
+        self.info("[_reset_to_jql_mode] END - Reset to JQL mode complete")
 
     def on_events(self, flags):
         """
@@ -362,7 +438,12 @@ class JiraQueryExplorer(kp.Plugin):
         Returns:
             List of filtered issues
         """
+        self.info(
+            f"[_filter_results] START - filter_text='{filter_text}', cached={len(self._cached_results)}"
+        )
+
         if not self._cached_results:
+            self.info("[_filter_results] No cached results, returning empty list")
             return []
 
         filter_lower = filter_text.lower()
@@ -381,6 +462,7 @@ class JiraQueryExplorer(kp.Plugin):
             if filter_lower in searchable_text:
                 filtered.append(issue)
 
+        self.info(f"[_filter_results] END - Found {len(filtered)} matching results")
         return filtered
 
     def _is_configured(self):
