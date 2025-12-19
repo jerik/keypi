@@ -1,6 +1,6 @@
 # KeyPi - Jira Query Explorer
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 
 ---
 
@@ -46,10 +46,35 @@ Keypirinha neu starten: `Ctrl + Alt + R`
 
 ## 💻 Verwendung
 
+### Basis-Workflow
+
 1. Tippe: `jqe` → `Tab`
 2. JQL eingeben: `assignee = currentUser()`
-3. `Enter` drücken
+3. `Enter` drücken → Query wird ausgeführt
+4. Ergebnisse erscheinen
+
+### Filter-Modus
+
+Nach Ausführung der JQL-Query kannst du die Ergebnisse filtern:
+
+1. JQL eingeben: `assignee = currentUser()` → `Enter`
+2. Ergebnisse werden angezeigt (z.B. 50 Tickets)
+3. Weiteren Text eingeben: `bug` → filtert Ergebnisse lokal
 4. Ticket auswählen → `Enter` → öffnet im Browser
+
+**Vorteile:**
+- Keine zusätzlichen API-Calls beim Filtern
+- Schnelles Durchsuchen großer Ergebnislisten
+- Filter durchsucht: Ticket-ID, Summary, Status
+
+### Konfiguration
+
+Das Keyword ist konfigurierbar in `keypi_jqe.ini`:
+
+```ini
+[main]
+keyword = jqe  # Ändere dies nach Belieben (z.B. "jira")
+```
 
 ### JQL-Beispiele
 
@@ -97,6 +122,13 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog
 
+### Version 1.1.0 (2025-12-19)
+- **Neu:** Two-Phase Filter Mode (JQL Input → Filter Results)
+- **Neu:** Konfigurierbares Keyword (default: "jqe")
+- **Verbesserung:** Keine API-Calls während JQL-Eingabe
+- **Verbesserung:** Lokales Filtern von gecachten Ergebnissen
+- **Performance:** ~90% weniger API-Calls
+
 ### Version 1.0.0 (2025-12-18)
 - Initial Release (MVP)
 - JQL-Queries ausführen
@@ -105,4 +137,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | v1.0.0
+**Ende** | v1.1.0

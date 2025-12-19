@@ -169,29 +169,29 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 ### Implementation Checklist
 
 **Phase 1: State Management & Configuration**
-- [ ] Instanzvariablen hinzufügen (_current_mode, _current_jql, _cached_results, _filter_text, _keyword)
-- [ ] Mode-Enum definieren (JQL_MODE = "jql", FILTER_MODE = "filter")
-- [ ] Initialisierung in `__init__()` oder `on_start()`
-- [ ] Config-Option "keyword" hinzufügen (keypi_jqe.ini)
-- [ ] `_load_config()` erweitern: Keyword aus Config lesen
-- [ ] `on_catalog()` anpassen: Dynamisches Keyword verwenden
+- [x] Instanzvariablen hinzufügen (_current_mode, _current_jql, _cached_results, _filter_text, _keyword)
+- [x] Mode-Enum definieren (JQL_MODE = "jql", FILTER_MODE = "filter")
+- [x] Initialisierung in `__init__()` oder `on_start()`
+- [x] Config-Option "keyword" hinzufügen (keypi_jqe.ini)
+- [x] `_load_config()` erweitern: Keyword aus Config lesen
+- [x] `on_catalog()` anpassen: Dynamisches Keyword verwenden
 
 **Phase 2: JQL-Modus**
-- [ ] `on_suggest()` anpassen: Im JQL-Modus KEINE API-Calls
-- [ ] Hint anzeigen: "Press Enter to execute query"
-- [ ] `on_execute()`: Enter → Query ausführen + Mode wechseln
+- [x] `on_suggest()` anpassen: Im JQL-Modus KEINE API-Calls
+- [x] Hint anzeigen: "Press Enter to execute query"
+- [x] `on_execute()`: Enter → Query ausführen + Mode wechseln
 
 **Phase 3: Filter-Modus**
-- [ ] `_filter_results()` Methode implementieren
-- [ ] `on_suggest()`: Im Filter-Modus gecachte Ergebnisse filtern
-- [ ] Visuelles Feedback: Catalog Item mit "jqe filter|" Prefix
-- [ ] `on_execute()`: Im Filter-Modus Ticket öffnen
+- [x] `_filter_results()` Methode implementieren
+- [x] `on_suggest()`: Im Filter-Modus gecachte Ergebnisse filtern
+- [x] Visuelles Feedback: Catalog Item mit "jqe|" vs "jqe filter|" (durch State)
+- [x] `on_execute()`: Im Filter-Modus Ticket öffnen
 
 **Phase 4: Testing & Finalisierung**
 - [ ] Manuelle Tests durchgeführt (siehe Testplan)
-- [ ] DoD: ruff check, ruff format
-- [ ] documentation.md aktualisiert
-- [ ] Changelog updated (keypi_jqe/res/changelog/)
+- [x] DoD: ruff check, ruff format
+- [x] documentation.md aktualisiert
+- [x] Changelog updated (keypi_jqe/res/changelog/)
 
 ### Dialog-Historie
 [Diskussionen und Entscheidungen während der Entwicklung]
