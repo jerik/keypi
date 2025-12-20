@@ -142,21 +142,21 @@ damit die Ergebnisliste kürzer wird und ich schneller das von mir gesuchte Tick
 ### Manuelle Tests
 
 **Filter-Funktionalität:**
-- [ ] JQL eingeben → KEINE API-Calls (Logs prüfen)
-- [ ] Enter drücken → Query wird ausgeführt (nur 1 API-Call)
-- [ ] Ergebnisse erscheinen
-- [ ] "ab" tippen → Liste filtert sich (kein neuer API-Call)
-- [ ] Enter → Ausgewähltes Ticket öffnet im Browser
-- [ ] Test mit leerer Query → Fehlermeldung
-- [ ] Test mit ungültiger JQL → Fehlermeldung nach Enter
-- [ ] Test mit 0 Ergebnissen → "No results" Meldung
+- [x] JQL eingeben → KEINE API-Calls (Logs prüfen)
+- [x] Enter drücken → Query wird ausgeführt (nur 1 API-Call)
+- [x] Ergebnisse erscheinen
+- [x] "ab" tippen → Liste filtert sich (kein neuer API-Call)
+- [x] Enter → Ausgewähltes Ticket öffnet im Browser
+- [ ] Test mit leerer Query → Fehlermeldung --> Fehlerhaft, wird ins Backlog aufgenommen, muss jetzt nicht gefixt werden.
+- [x] Test mit ungültiger JQL → Fehlermeldung nach Enter
+- [x] Test mit 0 Ergebnissen → "No results" Meldung
 
 **Konfigurierbares Keyword:**
-- [ ] Standard-Keyword "jqe" funktioniert
-- [ ] Keyword in Config ändern (z.B. "jira")
-- [ ] Keypirinha neu starten
-- [ ] Neues Keyword funktioniert
-- [ ] Altes Keyword "jqe" funktioniert nicht mehr
+- [x] Standard-Keyword "jqe" funktioniert
+- [x] Keyword in Config ändern (z.B. "jira")
+- [x] Keypirinha neu starten
+- [x] Neues Keyword funktioniert
+- [ ] Altes Keyword "jqe" funktioniert nicht mehr --> Fehlerhaft, wird ins Backlog aufgenommen, muss jetzt nicht gefixt werden.
 
 ## 📝 Notizen
 
