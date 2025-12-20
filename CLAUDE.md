@@ -41,6 +41,7 @@ keypi/
    - `CLAUDE.md` (diese Datei) → Projektregeln
    - `USER-STORY.md` → Aktuelle Feature-Spec
    - `BACKLOG.md` → Kontext & Synergien
+   - `KEYPIRINHA-LEARNINGS.md` → Best Practices & Lessons Learned
    - **Prüft Git Tags**: Checkt ob nach letztem Merge auf `main` ein Git Tag fehlt
      - Falls Tag fehlt: Erstellt Tag mit nächster Minor-Version (z.B. v1.1.0 → v1.2.0)
      - Tag-Format: `v{major}.{minor}.{patch}` (z.B. v1.2.0)
@@ -89,6 +90,7 @@ Am Ende jeder Feature-Implementierung:
 - [ ] DoD durchgeführt (ruff, pytest)
 - [ ] `documentation.md` aktualisiert
 - [ ] Changelog in `keypi_jqe/res/changelog/` aktualisiert
+- [ ] `KEYPIRINHA-LEARNINGS.md` mit neuen Erkenntnissen aktualisiert
 - [ ] Manuelle Tests durchgeführt
 - [ ] Kurze Zusammenfassung erstellt (was geändert, wie getestet)
 
