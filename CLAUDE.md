@@ -41,6 +41,10 @@ keypi/
    - `CLAUDE.md` (diese Datei) → Projektregeln
    - `USER-STORY.md` → Aktuelle Feature-Spec
    - `BACKLOG.md` → Kontext & Synergien
+   - **Prüft Git Tags**: Checkt ob nach letztem Merge auf `main` ein Git Tag fehlt
+     - Falls Tag fehlt: Erstellt Tag mit nächster Minor-Version (z.B. v1.1.0 → v1.2.0)
+     - Tag-Format: `v{major}.{minor}.{patch}` (z.B. v1.2.0)
+     - Regel: Mittlere Zahl (minor) wird +1 erhöht pro Feature-Release
 4. **Claude** implementiert Feature
    - Aktualisiert Checkboxen in `USER-STORY.md` während Arbeit
    - Hält sich an Code-Standards
@@ -229,6 +233,24 @@ pytest  # falls Tests vorhanden
 - **NIEMALS** direkt auf `main` pushen
 - Commits: Klare, beschreibende Messages (Englisch)
 - Conventional Commits verwenden (feat:, fix:, docs:, chore:)
+
+### Versioning & Git Tags
+- **Semantic Versioning**: `v{major}.{minor}.{patch}` (z.B. v1.2.0)
+- **Tag-Strategie**:
+  - Jedes Feature-Release auf `main` bekommt einen Tag
+  - Minor-Version wird +1 erhöht pro Feature (v1.1.0 → v1.2.0)
+  - Tags werden automatisch von Claude erstellt (bei Beginn einer neuen User Story)
+  - Beispiel: Nach Merge von Filter-Feature → `v1.1.0`
+- **Tag-Erstellung**:
+  ```bash
+  # Claude prüft bei jeder neuen User Story:
+  git tag --list  # Checkt existierende Tags
+  # Falls Tag für letzten Merge fehlt:
+  git tag -a v1.X.0 -m "Release v1.X.0: Feature Name"
+  git push origin v1.X.0  # Push to remote
+  ```
+- **Zweck**: Nachvollziehbarkeit, welches Feature in welcher Version enthalten ist
+- **GitHub Releases**: Tags erscheinen automatisch als Releases in GitHub
 
 ---
 
