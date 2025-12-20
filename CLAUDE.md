@@ -2,142 +2,287 @@
 
 Keypirinha-Plugin für direktes Abfragen von Jira Cloud mittels JQL (Jira Query Language) aus dem Keypirinha-Launcher.
 
-## Allgemein
-- Arbeite immer in einem neuen Branch pro Task
-- Niemals direkt auf mein committen / pushen
-- Code und Kommentare  im Quellcode und in Git nur in English
+---
 
-## Tech Stack
+## 📁 Projektstruktur
+
+```
+keypi/
+├── CLAUDE.md                    # Diese Datei - Projektregeln & Standards
+├── USER-STORY.md                # Aktuelle Feature-Arbeit (Dialog zwischen Erik & Claude)
+├── BACKLOG.md                   # Feature-Ideen & Roadmap (Erik pflegt, Claude liest)
+├── documentation.md             # Endnutzer-Dokumentation (Claude aktualisiert)
+├── archive/                     # Abgeschlossene User Stories
+│   └── YYYYMMDD-*.md           # Archivierte Spezifikationen
+├── keypi_jqe/                   # Haupt-Plugin-Package
+│   ├── __init__.py             # Plugin-Hauptklasse (erbt von keypirinha.plugin.Plugin)
+│   ├── lib/                    # Interne Libraries
+│   │   ├── __init__.py         # Package Marker
+│   │   └── jira_client.py      # Jira API Client Wrapper
+│   └── res/                    # Ressourcen & Konfiguration
+│       ├── keypi_jqe.ini       # Benutzer-Konfigurationsdatei (Template)
+│       ├── packages.json       # Package-Metadaten für Package Control
+│       └── changelog/          # Versionshistorie
+└── .gitignore                  # Git Ignore Rules
+```
+
+---
+
+## 🔄 Entwicklungs-Workflow
+
+### Neues Feature starten
+
+1. **Erik** erstellt `USER-STORY.md` mit Feature-Beschreibung
+2. **Erik + Claude** verfeinern `USER-STORY.md` im Dialog
+   - Anforderungen klären
+   - Technische Details festlegen
+   - Offene Fragen beantworten
+3. **Claude** liest:
+   - `CLAUDE.md` (diese Datei) → Projektregeln
+   - `USER-STORY.md` → Aktuelle Feature-Spec
+   - `BACKLOG.md` → Kontext & Synergien
+4. **Claude** implementiert Feature
+   - Aktualisiert Checkboxen in `USER-STORY.md` während Arbeit
+   - Hält sich an Code-Standards
+   - Führt DoD durch (siehe unten)
+5. **Erik + Claude** besprechen Ergebnis
+   - Testing
+   - Bugfixing
+   - Nachbesserungen
+6. **Claude** aktualisiert `documentation.md` mit neuen Features
+7. **Erik** verschiebt `USER-STORY.md` → `archive/YYYYMMDD-done-user-story.md`
+8. **Nächstes Feature:** Erik erstellt neue `USER-STORY.md`
+
+### Feature-Backlog
+
+- **BACKLOG.md** enthält zukünftige Feature-Ideen (Erik pflegt)
+- **Claude liest BACKLOG.md IMMER mit**, um Implikationen & Synergien zu erkennen
+- Bei Diskussionen: Synergien aus Backlog aktiv ansprechen
+
+---
+
+## 🎯 Definition of Done (DoD)
+
+**WICHTIG:** Vor jedem Commit müssen folgende Checks durchgeführt werden:
+
+```bash
+# 1. Code-Style prüfen
+ruff check .
+
+# 2. Code-Formatierung prüfen
+ruff format --check .
+
+# 3. Tests ausführen (falls vorhanden)
+pytest
+
+# Wenn Checks fehlschlagen: Iteriere bis alle grün sind!
+```
+
+### Abschluss-Checklist
+
+Am Ende jeder Feature-Implementierung:
+- [ ] Alle Checkboxen in `USER-STORY.md` abgehakt
+- [ ] DoD durchgeführt (ruff, pytest)
+- [ ] `documentation.md` aktualisiert
+- [ ] Changelog in `keypi_jqe/res/changelog/` aktualisiert
+- [ ] Manuelle Tests durchgeführt
+- [ ] Kurze Zusammenfassung erstellt (was geändert, wie getestet)
+
+---
+
+## 💻 Tech Stack
+
 - **Framework**: Keypirinha Plugin API
 - **Sprache**: Python 3
 - **API**: Jira Cloud REST API v3
-- **Authentifizierung**: Atlassian API Keys
+- **Authentifizierung**: Atlassian API Keys (Basic Auth)
 - **Konfiguration**: INI-Format
 - **Distribution**: Keypirinha Package Control (GitHub)
+- **Testing**: pytest (optional)
+- **Linting**: ruff
 
-## Projektstruktur
-```
-keypi/
-├── keypi_jqe/              # Haupt-Plugin-Package
-│   ├── __init__.py         # Plugin-Hauptklasse (erbt von keypirinha.plugin.Plugin)
-│   ├── lib/                # Interne Libraries
-│   │   └── jira_client.py  # Jira API Client Wrapper
-│   └── res/                # Ressourcen & Konfiguration
-│       ├── keypi_jqe.ini   # Benutzer-Konfigurationsdatei
-│       ├── packages.json   # Package-Metadaten für Package Control
-│       └── changelog/      # Versionshistorie
-├── instructions.md         # Projekt-Requirements & MVP-Spezifikation
-└── CLAUDE.md              # Diese Datei
-```
+---
 
-## Entwicklung
-```bash
-# Plugin testen
-# 1. Kopiere keypi_jqe/ nach %APPDATA%\Keypirinha\InstalledPackages\
-# 2. Starte Keypirinha neu (Strg+Alt+R)
-# 3. Teste mit Keyword "jqe"
+## 📝 Code-Standards
 
-# Installation für Endnutzer
-# Via Keypirinha Package Control installieren
+### Python-Konventionen
+- **PEP 8** Style Guide strikt befolgen
+- Code und Kommentare im Quellcode **nur in Englisch**
+- Git-Commits **nur in Englisch**
+- Type Hints wo sinnvoll verwenden
+- Docstrings für alle öffentlichen Methoden
 
-# Deployment
-# 1. Push nach GitHub
-# 2. Registrierung bei Keypirinha Package Control
-# 3. Nutzer installieren via Package Control
-```
+### Keypirinha-Spezifisch
+- Plugin-Klasse **muss** von `keypirinha.plugin.Plugin` erben
+- Pflicht-Methoden implementieren:
+  - `on_catalog()` - Catalog Items registrieren
+  - `on_suggest()` - User Input verarbeiten
+  - `on_execute()` - Aktionen ausführen
+  - `on_events()` - Config-Changes behandeln
+- **NIEMALS** UI blockieren - Async/Non-blocking für API-Calls
+- `kp.shell_execute()` für Browser-URLs nutzen
+- Keypirinha übernimmt Live-Filtering - nur Daten bereitstellen
 
-## Entwicklungsprozess
-- Definition of Done:
-  - ruff check .
-  - ruff format --check .
-  - pytest
-- Wenn Checks fehlschlagen: iteriere bis grün.
-- Liefere am Ende:
-  - kurze Zusammenfassung
-  - was geändert wurde
-  - wie getestet wurde (Befehle + Ergebnis), style tl;dir
-
-## Code-Standards
-- **PEP 8** Style Guide für Python-Code befolgen
-- Plugin-Klasse muss von `keypirinha.plugin.Plugin` erben
-- Pflicht-Methoden implementieren: `on_activate()`, `on_suggest()`, `on_execute()`
-- Async/Non-blocking für API-Calls (UI nicht blockieren)
+### Error Handling
 - Umfassendes Error Handling für API-Requests
-- Logging für Debugging implementieren
-- JQL-Syntax vor API-Request validieren
+- Benutzerfreundliche Fehlermeldungen in Keypirinha anzeigen
+- Logging für Debugging implementieren (`self.info()`, `self.warn()`, `self.err()`)
+- Network Errors abfangen (Timeout, Offline)
+- Rate Limiting behandeln (429 Fehler)
+- Auth-Fehler klar kommunizieren (401/403)
 
-## Projektspezifische Regeln
-- **Keyword**: Plugin reagiert auf "jqe" in Keypirinha
-- **API-Kommunikation**: Nur über `lib/jira_client.py`, nicht direkt in Plugin-Klasse
+### API-Kommunikation
+- **NUR** über `lib/jira_client.py`, **NICHT** direkt in Plugin-Klasse
+- JQL-Syntax validieren vor API-Request
+- Timeouts für API-Requests setzen (aktuell: 10 Sekunden)
+- Custom Exceptions nutzen (`JiraAuthError`, `JiraAPIError`, `JiraNetworkError`)
+
+---
+
+## 🎨 Projektspezifische Regeln
+
+### Plugin-Verhalten
+- **Keyword**: Plugin reagiert auf `jqe` in Keypirinha
 - **Ergebnis-Format**: `TICKET-ID: [Status] Summary`
 - **Datenfelder**: TicketID, Summary, Status, Priority, Creator, Assignee, CreatedDate
-- **Konfiguration**: API-Key in `keypi_jqe.ini` speichern (nicht im Code)
-- **Browser-Öffnung**: Nutze `kp.shell_execute()` für Ticket-URLs
-- **Filtern**: Keypirinha übernimmt Live-Filtering - nur Daten bereitstellen
+- **Filtern**: Keypirinha macht Live-Filtering - Plugin liefert nur Daten
 
-## MVP Features (Phase 1)
-1. ✅ Keyword "jqe" aktiviert Plugin
-2. ✅ User kann JQL-Query eingeben
-3. ✅ Query an Jira Cloud API mit API-Key
-4. ✅ Ergebnisse als Liste anzeigen
-5. ✅ Alle relevanten Felder extrahieren (siehe oben)
-6. ✅ Ticket im Browser öffnen bei Auswahl
-7. ✅ API-Key in Config speichern
+### Konfiguration
+- API-Key in `keypi_jqe.ini` speichern (**NICHT** im Code)
+- Konfigurationsdatei liegt im User-Verzeichnis (`%APPDATA%\Keypirinha\User\`)
+- Template mit leeren Werten im Plugin committen
+- **NIEMALS** Credentials in Git committen
 
-## Zukünftige Features (Phase 2)
-- JQL-Shortcuts in Config (z.B. "me" → "assignee = currentUser()")
-- Query-Historie (letzte 10 Queries)
-- Schnellzugriff auf Historie mit "hist" Keyword
+### API-Endpunkte
+- **Current**: `/rest/api/3/search/jql` (nicht `/rest/api/3/search` - ist deprecated/410 Gone)
+- Basic Auth: Email + API Token (nicht Passwort!)
+- Max Results: 50 (konfigurierbar in `jira_client.py`)
 
-## Wichtige Hinweise
-- **API-Keys**: Werden in `keypi_jqe.ini` gespeichert - Nutzer ist für Sicherheit verantwortlich
-- **Konfigurationsdatei**: Nie mit Credentials in Git committen (`.gitignore` beachten)
-- **Rate Limiting**: Jira Cloud API hat Rate Limits - graceful handling implementieren
-- **Pagination**: API limitiert Ergebnisse - Pagination beachten
-- **Timeouts**: API-Requests mit Timeout versehen (nicht unbegrenzt warten)
-- **Error Messages**: Benutzerfreundliche Fehlermeldungen in Keypirinha anzeigen
-- **Network Errors**: Offline-Szenario und Netzwerkfehler abfangen
+---
 
-## Häufige Fehler vermeiden
-- **NICHT**: API-Keys im Code hardcoden oder unverschlüsselt commiten
-- **NICHT**: UI während API-Calls blockieren (immer async)
-- **NICHT**: Ohne Validierung JQL an API senden
-- **NICHT**: 401/403 Fehler ignorieren (User muss API-Key konfigurieren)
-- **NICHT**: `on_deactivate()` Cleanup vergessen
-- **IMMER**: Von `keypirinha.plugin.Plugin` erben
-- **IMMER**: Alle drei Methoden implementieren: `on_activate`, `on_suggest`, `on_execute`
-- **IMMER**: Netzwerkfehler und Rate Limiting behandeln
-- **IMMER**: Sinnvolle Defaults in Beispiel-Config bereitstellen
-- **IMMER**: `.ini` Dateien mit Credentials in `.gitignore` eintragen
+## 🚨 Häufige Fehler vermeiden
 
-## Nützliche Ressourcen
-- **Keypirinha Architektur**: https://keypiranha.com/architecture.html
-- **Keypirinha Packages**: https://keypiranha.com/packages.html
-- **Keypirinha API Docs**: https://keypiranha.com/api.html
-- **Jira Cloud REST API v3**: https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/
-- **Package Control**: https://github.com/ueffel/Keypirinha-PackageControl
-- **Keypirinha Contributions**: https://keypiranha.com/contributions.html
+### NICHT tun:
+- ❌ API-Keys im Code hardcoden oder unverschlüsselt commiten
+- ❌ UI während API-Calls blockieren
+- ❌ Ohne Validierung JQL an API senden
+- ❌ 401/403 Fehler ignorieren
+- ❌ `on_deactivate()` Cleanup vergessen
+- ❌ Direkt auf `main` committen/pushen
+- ❌ Veraltete API-Endpunkte nutzen
 
-## Beispiel-Konfiguration (keypi_jqe.ini)
-```ini
-[main]
-# Dein Atlassian API Token (erstelle unter: https://id.atlassian.com/manage/api-tokens)
-atlassian_api_key =
+### IMMER tun:
+- ✅ Von `keypirinha.plugin.Plugin` erben
+- ✅ Alle erforderlichen Methoden implementieren
+- ✅ Netzwerkfehler und Rate Limiting behandeln
+- ✅ Sinnvolle Defaults in Beispiel-Config bereitstellen
+- ✅ `.ini` Dateien mit Credentials in `.gitignore` eintragen
+- ✅ DoD durchführen vor jedem Commit
+- ✅ In neuem Branch arbeiten (Format: `claude/*`)
+- ✅ Code und Kommentare in Englisch
 
-# Deine Jira Cloud URL (z.B. https://dein-domain.atlassian.net)
-jira_url =
+---
 
-# Dein Atlassian Account Email
-atlassian_email =
+## 🔧 Entwicklung & Testing
 
-[jql_shortcuts]
-# Optional: Shortcuts für häufige JQL-Queries (Phase 2)
-# me = assignee = currentUser()
-# open = status = "Open"
+### Plugin lokal testen
+
+```bash
+# 1. Kopiere Plugin-Ordner
+cp -r keypi_jqe/ %APPDATA%\Keypirinha\InstalledPackages\
+
+# 2. Erstelle User-Config
+# Datei: %APPDATA%\Keypirinha\User\keypi_jqe.ini
+# Inhalt: jira_url, atlassian_email, atlassian_api_key
+
+# 3. Keypirinha neu starten
+# Drücke: Ctrl + Alt + R
+
+# 4. Plugin testen
+# - Tippe: jqe
+# - Tab drücken
+# - JQL eingeben
+# - Enter drücken
 ```
 
-## Git Workflow
-- **Development Branch**: `claude/create-claude-md-w4YYd`
-- **Main Branch**: (wird noch festgelegt)
-- Commits: Klare, beschreibende Commit-Messages
-- Push mit: `git push -u origin claude/create-claude-md-w4YYd`
+### DoD ausführen
+
+```bash
+# In keypi/ Verzeichnis:
+ruff check .
+ruff format --check .
+pytest  # falls Tests vorhanden
+```
+
+### Installation für Endnutzer
+
+- Via Keypirinha Package Control (geplant)
+- Manuelle Installation (siehe `documentation.md`)
+
+---
+
+## 📦 Git Workflow
+
+### Branch-Strategie
+- **Main Branch**: `main` (geschützt)
+- **Feature Branches**: `claude/<feature-name>-<session-id>`
+- **NIEMALS** direkt auf `main` pushen
+- Commits: Klare, beschreibende Messages (Englisch)
+- Conventional Commits verwenden (feat:, fix:, docs:, chore:)
+
+---
+
+## 📚 Nützliche Ressourcen
+
+### Keypirinha
+- **Architektur**: https://keypirinha.com/architecture.html
+- **Packages**: https://keypirinha.com/packages.html
+- **API Docs**: https://keypirinha.com/api.html
+- **Contributions**: https://keypirinha.com/contributions.html
+
+### Jira Cloud
+- **REST API v3**: https://developer.atlassian.com/cloud/jira/platform/rest/v3/intro/
+- **JQL Dokumentation**: https://support.atlassian.com/jira-service-management-cloud/docs/use-advanced-search-with-jira-query-language-jql/
+
+### Tools
+- **Package Control**: https://github.com/ueffel/Keypirinha-PackageControl
+- **Ruff**: https://docs.astral.sh/ruff/
+
+---
+
+## 💡 Wichtige Hinweise
+
+### Sicherheit
+- **API-Keys**: Nutzer ist für Sicherheit verantwortlich
+- **Credentials**: Nie in Git committen
+- **Berechtigungen**: Plugin nutzt User-Permissions
+
+### Performance
+- **Rate Limiting**: Jira Cloud API hat Limits - graceful handling
+- **Pagination**: API limitiert Ergebnisse (aktuell max. 50)
+- **Timeouts**: 10 Sekunden pro Request
+- **Caching**: Aktuell kein Cache (könnte zukünftig implementiert werden)
+
+### Compatibility
+- **Keypirinha**: Windows-only (Keypirinha ist Windows-only)
+- **Jira Cloud**: Nur Cloud, nicht Server/Data Center
+- **Python**: Python 3 (Keypirinha nutzt embedded Python)
+
+---
+
+## 📞 Support & Kommunikation
+
+### Bei Fragen während Implementierung
+- BACKLOG.md konsultieren (Synergien?)
+- Offene Fragen in USER-STORY.md dokumentieren
+- Im Dialog mit Erik klären
+
+### Bei technischen Problemen
+- Keypirinha-Konsole prüfen (F2)
+- Logs analysieren (`self.info()`, `self.warn()`, `self.err()`)
+- DoD-Checks durchführen
+
+---
+
+**Version:** 2.0 (Workflow-Update)
+**Letzte Aktualisierung:** 2025-12-18

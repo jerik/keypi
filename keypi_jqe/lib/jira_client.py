@@ -22,7 +22,7 @@ class JiraClient:
             email: Atlassian account email
             api_token: Atlassian API token
         """
-        self.jira_url = jira_url.rstrip('/')
+        self.jira_url = jira_url.rstrip("/")
         self.email = email
         self.api_token = api_token
         self.timeout = 10  # seconds
@@ -53,20 +53,13 @@ class JiraClient:
         endpoint = f"{self.jira_url}/rest/api/3/search/jql"
 
         # Define fields to retrieve
-        fields = [
-            "summary",
-            "status",
-            "priority",
-            "creator",
-            "assignee",
-            "created"
-        ]
+        fields = ["summary", "status", "priority", "creator", "assignee", "created"]
 
         # Build query parameters
         params = {
             "jql": jql_query,
             "maxResults": max_results,
-            "fields": ",".join(fields)
+            "fields": ",".join(fields),
         }
 
         url = f"{endpoint}?{urllib.parse.urlencode(params)}"
@@ -100,9 +93,7 @@ class JiraClient:
                     f"Invalid JQL query: {e.reason}. Please check your query syntax."
                 )
             else:
-                raise JiraAPIError(
-                    f"Jira API error: {e.code} {e.reason}"
-                )
+                raise JiraAPIError(f"Jira API error: {e.code} {e.reason}")
 
         except urllib.error.URLError as e:
             raise JiraNetworkError(
@@ -142,7 +133,11 @@ class JiraClient:
 
                 # Extract assignee
                 assignee = fields.get("assignee")
-                assignee_name = assignee.get("displayName", "Unassigned") if assignee else "Unassigned"
+                assignee_name = (
+                    assignee.get("displayName", "Unassigned")
+                    if assignee
+                    else "Unassigned"
+                )
 
                 parsed_issue = {
                     "key": issue.get("key", ""),
@@ -152,7 +147,7 @@ class JiraClient:
                     "creator": creator_name,
                     "assignee": assignee_name,
                     "created": fields.get("created", ""),
-                    "url": f"{self.jira_url}/browse/{issue.get('key', '')}"
+                    "url": f"{self.jira_url}/browse/{issue.get('key', '')}",
                 }
 
                 parsed_issues.append(parsed_issue)
@@ -167,14 +162,17 @@ class JiraClient:
 # Custom exceptions
 class JiraAuthError(Exception):
     """Raised when authentication fails"""
+
     pass
 
 
 class JiraAPIError(Exception):
     """Raised when API returns an error"""
+
     pass
 
 
 class JiraNetworkError(Exception):
     """Raised when network error occurs"""
+
     pass
