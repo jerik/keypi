@@ -1,10 +1,10 @@
 # KeyPi - Feature Backlog
 
-**Letzte Aktualisierung:** 2025-12-18
+**Letzte Aktualisierung:** 2025-12-20
 
 ---
 
-## Phase 2 Features
+## Features
 
 ### JQL Shortcuts
 Nutzer können häufig verwendete JQL-Queries als Shortcuts in der Konfiguration speichern.
@@ -25,6 +25,23 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 - Letzte 10 Queries persistent speichern
 - Keyword "hist" zeigt Historie
 - Historie kann gelöscht werden
+
+---
+## Minor Bugs
+### leere jql und man drück Enter 
+Erwartetes Verhalten: Es wird eine Fehlermeldung angezeigt, man ist weiterhin im jql mode
+Aktuelles Verhalten: die Launchbox schliesst sich. 
+Workaround: Man fängt von neuem an, launchbox starten und jj eingeben
+Prio: gering
+
+### Neu konfigurieren des Keywords
+In der Konfiguration ist das Keyword von jqe auf jj gesetzt worden
+Nach dem neuladen der configuration, kann das plugin mit jj aufgerufen werden 
+
+Erwartetes Verhalten: Das alte keyword funktioniert nicht mehr
+Aktuelles Verhalten: Das alte keyword funktioniert weiterhin und ruft das plugin auf
+Workaround: den eintrag jqe manuell aus dem Katalog entfernen, mittels CTRL + DEL sofern es stört
+Prio: sehr gering
 
 ---
 
