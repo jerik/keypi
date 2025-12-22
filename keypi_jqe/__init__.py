@@ -25,6 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
     ITEMCAT_FILTER = kp.ItemCategory.USER_BASE + 3
+    ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 4
 
     # Modes
     MODE_JQL = "jql"
@@ -44,6 +45,9 @@ class JiraQueryExplorer(kp.Plugin):
         self._current_jql = ""
         self._cached_results = []
         self._filter_text = ""
+
+        # JQL Shortcuts
+        self._jql_shortcuts = {}  # {shortcut_name: jql_query}
 
     def on_start(self):
         """Called when plugin is loaded"""
@@ -132,14 +136,17 @@ class JiraQueryExplorer(kp.Plugin):
                     [
                         self.create_item(
                             category=kp.ItemCategory.KEYWORD,
-                            label="Enter JQL query...",
-                            short_desc="Example: assignee = currentUser() AND status = Open",
+                            label="Enter JQL query or #shortcut...",
+                            short_desc="Example: assignee = currentUser() | Use # for shortcuts",
                             target="hint",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.IGNORE,
                         )
                     ]
                 )
+            elif user_input.strip().startswith("#"):
+                # Shortcut mode - show available shortcuts
+                self._handle_shortcut_input(user_input.strip())
             else:
                 # User is typing JQL - show "Press Enter" hint (NO API call)
                 self.dbg(f"JQL_MODE: typing '{user_input.strip()[:30]}...'")
@@ -326,6 +333,30 @@ class JiraQueryExplorer(kp.Plugin):
             self.info(f"Enter pressed - executing: {jql_query[:50]}...")
             self._execute_jql_query(jql_query)
 
+        # Handle shortcut execution - Expand shortcut and execute JQL
+        elif (
+            item.category() == self.ITEMCAT_SHORTCUT
+            and item.target() == "execute_shortcut"
+        ):
+            jql_query = item.data_bag()
+            self.info(f"Executing shortcut: {jql_query[:50]}...")
+            self._execute_jql_query(jql_query)
+
+        # Handle #edit - Open config file
+        elif (
+            item.category() == self.ITEMCAT_SHORTCUT and item.target() == "edit_config"
+        ):
+            # Get config file path
+            config_path = os.path.join(
+                kpu.shell_known_folder_path(kpu.FOLDERID.RoamingAppData),
+                "Keypirinha",
+                "User",
+                "keypi_jqe.ini",
+            )
+            self.info(f"Opening config file: {config_path}")
+            # Open config file with default editor
+            kpu.shell_execute(config_path)
+
         # Handle FILTER mode - Open Jira ticket URL in browser
         elif item.category() == self.ITEMCAT_RESULT:
             ticket_key = item.data_bag()
@@ -377,6 +408,18 @@ class JiraQueryExplorer(kp.Plugin):
             self.on_catalog()
             self.info(f"Keyword changed from '{old_keyword}' to '{self._keyword}'")
 
+        # Load JQL shortcuts
+        self._jql_shortcuts = {}
+        if settings.has_section("jql_shortcuts"):
+            for key in settings.keys("jql_shortcuts"):
+                jql_query = settings.get_stripped(
+                    key, section="jql_shortcuts", fallback=""
+                )
+                if jql_query:
+                    # Store shortcuts in lowercase for case-insensitive matching
+                    self._jql_shortcuts[key.lower()] = jql_query
+            self.info(f"Loaded {len(self._jql_shortcuts)} JQL shortcuts")
+
         # Initialize Jira client if credentials are available
         if self._is_configured():
             try:
@@ -423,3 +466,77 @@ class JiraQueryExplorer(kp.Plugin):
     def _is_configured(self):
         """Check if all required configuration values are set"""
         return bool(self.jira_url and self.email and self.api_token)
+
+    def _handle_shortcut_input(self, user_input):
+        """
+        Handle shortcut input starting with #
+
+        Args:
+            user_input: User input string starting with #
+        """
+        shortcut_name = user_input[1:].lower()  # Remove # and lowercase
+
+        suggestions = []
+
+        # Special case: #edit opens config file
+        if (
+            shortcut_name == ""
+            or shortcut_name == "edit"
+            or "edit".startswith(shortcut_name)
+        ):
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label=f"{self._keyword}: #edit",
+                    short_desc="Open shortcuts configuration file",
+                    target="edit_config",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+
+        # Show all shortcuts if only # is entered, or filter matching shortcuts
+        if shortcut_name == "":
+            # Show all shortcuts
+            for name, jql in sorted(self._jql_shortcuts.items()):
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_SHORTCUT,
+                        label=f"{self._keyword}: #{name}",
+                        short_desc=jql,
+                        target="execute_shortcut",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                        data_bag=jql,  # Store JQL for execution
+                    )
+                )
+        else:
+            # Filter shortcuts by name (case-insensitive partial match)
+            for name, jql in sorted(self._jql_shortcuts.items()):
+                if shortcut_name in name:
+                    suggestions.append(
+                        self.create_item(
+                            category=self.ITEMCAT_SHORTCUT,
+                            label=f"{self._keyword}: #{name}",
+                            short_desc=jql,
+                            target="execute_shortcut",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
+                            data_bag=jql,  # Store JQL for execution
+                        )
+                    )
+
+        if not suggestions:
+            # No shortcuts found
+            suggestions.append(
+                self.create_item(
+                    category=kp.ItemCategory.KEYWORD,
+                    label=f"{self._keyword}: #{shortcut_name}",
+                    short_desc="No shortcuts found. Define shortcuts in keypi_jqe.ini",
+                    target="no_shortcuts",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+
+        self.set_suggestions(suggestions)
