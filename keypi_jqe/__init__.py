@@ -51,7 +51,8 @@ class JiraQueryExplorer(kp.Plugin):
 
     def on_start(self):
         """Called when plugin is loaded"""
-        pass
+        # Reset state to ensure clean start
+        self._reset_to_jql_mode()
 
     def on_catalog(self):
         """
@@ -346,13 +347,12 @@ class JiraQueryExplorer(kp.Plugin):
         elif (
             item.category() == self.ITEMCAT_SHORTCUT and item.target() == "edit_config"
         ):
-            # Get config file path
-            config_path = os.path.join(
-                kpu.shell_known_folder_path(kpu.FOLDERID.RoamingAppData),
-                "Keypirinha",
-                "User",
-                "keypi_jqe.ini",
-            )
+            # Get config file path - use relative path from plugin directory
+            # Plugin is in: Packages/keypi_jqe/
+            # Config is in:  User/keypi_jqe.ini
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_jqe.ini")
+            config_path = os.path.abspath(config_path)
             self.info(f"Opening config file: {config_path}")
             # Open config file with default editor
             kpu.shell_execute(config_path)
@@ -478,12 +478,9 @@ class JiraQueryExplorer(kp.Plugin):
 
         suggestions = []
 
-        # Special case: #edit opens config file
-        if (
-            shortcut_name == ""
-            or shortcut_name == "edit"
-            or "edit".startswith(shortcut_name)
-        ):
+        # Show all shortcuts if only # is entered
+        if shortcut_name == "":
+            # Special shortcut: #edit
             suggestions.append(
                 self.create_item(
                     category=self.ITEMCAT_SHORTCUT,
@@ -491,13 +488,10 @@ class JiraQueryExplorer(kp.Plugin):
                     short_desc="Open shortcuts configuration file",
                     target="edit_config",
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
-                    hit_hint=kp.ItemHitHint.IGNORE,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
                 )
             )
-
-        # Show all shortcuts if only # is entered, or filter matching shortcuts
-        if shortcut_name == "":
-            # Show all shortcuts
+            # Show all JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
                 suggestions.append(
                     self.create_item(
@@ -506,12 +500,25 @@ class JiraQueryExplorer(kp.Plugin):
                         short_desc=jql,
                         target="execute_shortcut",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.IGNORE,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
                         data_bag=jql,  # Store JQL for execution
                     )
                 )
         else:
             # Filter shortcuts by name (case-insensitive partial match)
+            # Check if "edit" matches
+            if shortcut_name in "edit":
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_SHORTCUT,
+                        label=f"{self._keyword}: #edit",
+                        short_desc="Open shortcuts configuration file",
+                        target="edit_config",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                    )
+                )
+            # Check JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
                 if shortcut_name in name:
                     suggestions.append(
@@ -521,7 +528,7 @@ class JiraQueryExplorer(kp.Plugin):
                             short_desc=jql,
                             target="execute_shortcut",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
-                            hit_hint=kp.ItemHitHint.IGNORE,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
                             data_bag=jql,  # Store JQL for execution
                         )
                     )
