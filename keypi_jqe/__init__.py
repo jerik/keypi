@@ -475,11 +475,15 @@ class JiraQueryExplorer(kp.Plugin):
             user_input: User input string starting with #
         """
         shortcut_name = user_input[1:].lower()  # Remove # and lowercase
+        self.dbg(
+            f"[_handle_shortcut_input] input='{user_input}', name='{shortcut_name}', shortcuts={list(self._jql_shortcuts.keys())}"
+        )
 
         suggestions = []
 
         # Show all shortcuts if only # is entered
         if shortcut_name == "":
+            self.info(f"Showing all shortcuts: {len(self._jql_shortcuts)} JQL + 1 edit")
             # Special shortcut: #edit
             suggestions.append(
                 self.create_item(
@@ -493,6 +497,7 @@ class JiraQueryExplorer(kp.Plugin):
             )
             # Show all JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
+                self.dbg(f"Adding shortcut: #{name} = {jql[:50]}")
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
@@ -505,9 +510,11 @@ class JiraQueryExplorer(kp.Plugin):
                     )
                 )
         else:
-            # Filter shortcuts by name (case-insensitive partial match)
+            self.info(f"Filtering shortcuts with: '{shortcut_name}'")
+            # Filter shortcuts by name (case-insensitive prefix match)
             # Check if "edit" matches
-            if shortcut_name in "edit":
+            if "edit".startswith(shortcut_name):
+                self.dbg(f"'edit' matches '{shortcut_name}' (prefix match)")
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
@@ -518,9 +525,14 @@ class JiraQueryExplorer(kp.Plugin):
                         hit_hint=kp.ItemHitHint.KEEPALL,
                     )
                 )
+            else:
+                self.dbg(f"'edit' does NOT match '{shortcut_name}'")
+
             # Check JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
-                if shortcut_name in name:
+                self.dbg(f"Checking shortcut '{name}' against '{shortcut_name}'")
+                if name.startswith(shortcut_name):
+                    self.dbg(f"  -> '{name}' MATCHES (prefix match)")
                     suggestions.append(
                         self.create_item(
                             category=self.ITEMCAT_SHORTCUT,
@@ -532,9 +544,12 @@ class JiraQueryExplorer(kp.Plugin):
                             data_bag=jql,  # Store JQL for execution
                         )
                     )
+                else:
+                    self.dbg(f"  -> '{name}' does NOT match")
 
         if not suggestions:
             # No shortcuts found
+            self.warn(f"No shortcuts matched '{shortcut_name}'")
             suggestions.append(
                 self.create_item(
                     category=kp.ItemCategory.KEYWORD,
@@ -546,4 +561,5 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             )
 
+        self.info(f"Displaying {len(suggestions)} shortcut suggestions")
         self.set_suggestions(suggestions)
