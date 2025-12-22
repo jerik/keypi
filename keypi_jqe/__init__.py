@@ -475,7 +475,7 @@ class JiraQueryExplorer(kp.Plugin):
             user_input: User input string starting with #
         """
         shortcut_name = user_input[1:].lower()  # Remove # and lowercase
-        self.dbg(
+        self.info(
             f"[_handle_shortcut_input] input='{user_input}', name='{shortcut_name}', shortcuts={list(self._jql_shortcuts.keys())}"
         )
 
@@ -488,7 +488,7 @@ class JiraQueryExplorer(kp.Plugin):
             suggestions.append(
                 self.create_item(
                     category=self.ITEMCAT_SHORTCUT,
-                    label=f"{self._keyword}: #edit",
+                    label="#edit",
                     short_desc="Open shortcuts configuration file",
                     target="edit_config",
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
@@ -497,11 +497,11 @@ class JiraQueryExplorer(kp.Plugin):
             )
             # Show all JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
-                self.dbg(f"Adding shortcut: #{name} = {jql[:50]}")
+                self.info(f"Adding shortcut: #{name} = {jql[:50]}")
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
-                        label=f"{self._keyword}: #{name}",
+                        label=f"#{name}",
                         short_desc=jql,
                         target="execute_shortcut",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
@@ -514,11 +514,11 @@ class JiraQueryExplorer(kp.Plugin):
             # Filter shortcuts by name (case-insensitive prefix match)
             # Check if "edit" matches
             if "edit".startswith(shortcut_name):
-                self.dbg(f"'edit' matches '{shortcut_name}' (prefix match)")
+                self.info(f"'edit' matches '{shortcut_name}' (prefix match)")
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
-                        label=f"{self._keyword}: #edit",
+                        label="#edit",
                         short_desc="Open shortcuts configuration file",
                         target="edit_config",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
@@ -526,17 +526,17 @@ class JiraQueryExplorer(kp.Plugin):
                     )
                 )
             else:
-                self.dbg(f"'edit' does NOT match '{shortcut_name}'")
+                self.info(f"'edit' does NOT match '{shortcut_name}'")
 
             # Check JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
-                self.dbg(f"Checking shortcut '{name}' against '{shortcut_name}'")
+                self.info(f"Checking shortcut '{name}' against '{shortcut_name}'")
                 if name.startswith(shortcut_name):
-                    self.dbg(f"  -> '{name}' MATCHES (prefix match)")
+                    self.info(f"  -> '{name}' MATCHES (prefix match)")
                     suggestions.append(
                         self.create_item(
                             category=self.ITEMCAT_SHORTCUT,
-                            label=f"{self._keyword}: #{name}",
+                            label=f"#{name}",
                             short_desc=jql,
                             target="execute_shortcut",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
@@ -545,7 +545,7 @@ class JiraQueryExplorer(kp.Plugin):
                         )
                     )
                 else:
-                    self.dbg(f"  -> '{name}' does NOT match")
+                    self.info(f"  -> '{name}' does NOT match")
 
         if not suggestions:
             # No shortcuts found
