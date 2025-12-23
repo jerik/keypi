@@ -22,7 +22,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0-dev.3"  # Increment with each change
+    VERSION = "1.2.0-dev.4"  # Increment with each change
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -136,7 +136,7 @@ class JiraQueryExplorer(kp.Plugin):
             self._current_mode == self.MODE_JQL
             and len(items_chain) > 1
             and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
-            and items_chain[-1].target() == "execute_shortcut"
+            and items_chain[-1].target().startswith("shortcut_")
         ):
             jql_query = items_chain[-1].data_bag()
             self.dbg(f"Tab pressed on shortcut: '{jql_query}'")
@@ -367,9 +367,8 @@ class JiraQueryExplorer(kp.Plugin):
             self._execute_jql_query(jql_query)
 
         # Handle shortcut execution - Expand shortcut and execute JQL
-        elif (
-            item.category() == self.ITEMCAT_SHORTCUT
-            and item.target() == "execute_shortcut"
+        elif item.category() == self.ITEMCAT_SHORTCUT and item.target().startswith(
+            "shortcut_"
         ):
             jql_query = item.data_bag()
             self.info(f"Executing shortcut: {jql_query[:50]}...")
@@ -535,7 +534,7 @@ class JiraQueryExplorer(kp.Plugin):
                         category=self.ITEMCAT_SHORTCUT,
                         label=f"#{name}",
                         short_desc=jql,
-                        target="execute_shortcut",
+                        target=f"shortcut_{name}",  # Unique target per shortcut
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.KEEPALL,
                         data_bag=jql,  # Store JQL for execution
@@ -570,7 +569,7 @@ class JiraQueryExplorer(kp.Plugin):
                             category=self.ITEMCAT_SHORTCUT,
                             label=f"#{name}",
                             short_desc=jql,
-                            target="execute_shortcut",
+                            target=f"shortcut_{name}",  # Unique target per shortcut
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.KEEPALL,
                             data_bag=jql,  # Store JQL for execution
