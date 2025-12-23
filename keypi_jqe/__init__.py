@@ -22,7 +22,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0-dev.4"  # Increment with each change
+    VERSION = "1.2.0-dev.5"  # Increment with each change
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -130,8 +130,8 @@ class JiraQueryExplorer(kp.Plugin):
             # and we'll be in FILTER mode with cached results
             return
 
-        # Check if user pressed Tab on a shortcut item
-        # This allows executing shortcuts while keeping Keypirinha open
+        # Check if user selected a shortcut (pressed Enter/Tab)
+        # Show the expanded JQL as an "execute_jql" item (like manual JQL input)
         if (
             self._current_mode == self.MODE_JQL
             and len(items_chain) > 1
@@ -139,8 +139,25 @@ class JiraQueryExplorer(kp.Plugin):
             and items_chain[-1].target().startswith("shortcut_")
         ):
             jql_query = items_chain[-1].data_bag()
-            self.dbg(f"Tab pressed on shortcut: '{jql_query}'")
-            self._execute_jql_query(jql_query)
+            shortcut_name = items_chain[-1].target().replace("shortcut_", "")
+            self.info(
+                f"Shortcut #{shortcut_name} selected, showing JQL: {jql_query[:50]}..."
+            )
+
+            # Show JQL as execute item (same as manual JQL input)
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {jql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_jql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                        data_bag=jql_query,
+                    )
+                ]
+            )
             return
 
         # Check if user pressed Tab/Enter on #edit
