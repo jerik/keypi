@@ -22,7 +22,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0-dev.6"  # Increment with each change
+    VERSION = "1.2.0"  # JQL Shortcuts feature complete!
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -576,8 +576,8 @@ class JiraQueryExplorer(kp.Plugin):
                         label=f"#{name}",
                         short_desc=jql,
                         target=f"shortcut_{name}",  # Unique target per shortcut
-                        args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        args_hint=kp.ItemArgsHint.ACCEPTED,  # Allow Enter to add to chain
+                        hit_hint=kp.ItemHitHint.IGNORE,  # Reset hit hint
                         data_bag=jql,  # Store JQL for execution
                     )
                 )
@@ -611,8 +611,8 @@ class JiraQueryExplorer(kp.Plugin):
                             label=f"#{name}",
                             short_desc=jql,
                             target=f"shortcut_{name}",  # Unique target per shortcut
-                            args_hint=kp.ItemArgsHint.FORBIDDEN,
-                            hit_hint=kp.ItemHitHint.KEEPALL,
+                            args_hint=kp.ItemArgsHint.ACCEPTED,  # Allow Enter to add to chain
+                            hit_hint=kp.ItemHitHint.IGNORE,  # Reset hit hint
                             data_bag=jql,  # Store JQL for execution
                         )
                     )
