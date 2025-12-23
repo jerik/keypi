@@ -21,6 +21,9 @@ class JiraQueryExplorer(kp.Plugin):
     Allows querying Jira Cloud using JQL from Keypirinha
     """
 
+    # Version
+    VERSION = "1.2.0-dev.3"  # Increment with each change
+
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
@@ -51,6 +54,7 @@ class JiraQueryExplorer(kp.Plugin):
 
     def on_start(self):
         """Called when plugin is loaded"""
+        self.info(f"JiraQueryExplorer v{self.VERSION} loaded")
         # Reset state to ensure clean start
         self._reset_to_jql_mode()
 
@@ -124,6 +128,34 @@ class JiraQueryExplorer(kp.Plugin):
             self._execute_jql_query(jql_query)
             # After query execution, on_suggest will be called again
             # and we'll be in FILTER mode with cached results
+            return
+
+        # Check if user pressed Tab on a shortcut item
+        # This allows executing shortcuts while keeping Keypirinha open
+        if (
+            self._current_mode == self.MODE_JQL
+            and len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "execute_shortcut"
+        ):
+            jql_query = items_chain[-1].data_bag()
+            self.dbg(f"Tab pressed on shortcut: '{jql_query}'")
+            self._execute_jql_query(jql_query)
+            return
+
+        # Check if user pressed Tab/Enter on #edit
+        # Open config file and reset to allow new query
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "edit_config"
+        ):
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_jqe.ini")
+            config_path = os.path.abspath(config_path)
+            self.info(f"Opening config file: {config_path}")
+            kpu.shell_execute(config_path)
+            self._reset_to_jql_mode()
             return
 
         self.dbg(f"MODE={self._current_mode}, JQL='{self._current_jql}'")
@@ -562,4 +594,4 @@ class JiraQueryExplorer(kp.Plugin):
             )
 
         self.info(f"Displaying {len(suggestions)} shortcut suggestions")
-        self.set_suggestions(suggestions)
+        self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
