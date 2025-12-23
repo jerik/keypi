@@ -22,7 +22,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0-dev.5"  # Increment with each change
+    VERSION = "1.2.0-dev.6"  # Increment with each change
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -145,6 +145,7 @@ class JiraQueryExplorer(kp.Plugin):
             )
 
             # Show JQL as execute item (same as manual JQL input)
+            # KEEPALL keeps Keypirinha open for Tab execution
             self.set_suggestions(
                 [
                     self.create_item(
@@ -153,10 +154,12 @@ class JiraQueryExplorer(kp.Plugin):
                         short_desc="Press Tab to execute query, or Esc to go back",
                         target="execute_jql",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.IGNORE,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
                         data_bag=jql_query,
                     )
-                ]
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
             )
             return
 
@@ -383,13 +386,34 @@ class JiraQueryExplorer(kp.Plugin):
             self.info(f"Enter pressed - executing: {jql_query[:50]}...")
             self._execute_jql_query(jql_query)
 
-        # Handle shortcut execution - Expand shortcut and execute JQL
+        # Handle shortcut selection - Show JQL for review (not execute directly)
+        # This allows user to see the query before executing with Tab
         elif item.category() == self.ITEMCAT_SHORTCUT and item.target().startswith(
             "shortcut_"
         ):
             jql_query = item.data_bag()
-            self.info(f"Executing shortcut: {jql_query[:50]}...")
-            self._execute_jql_query(jql_query)
+            shortcut_name = item.target().replace("shortcut_", "")
+            self.info(
+                f"Shortcut #{shortcut_name} selected via Enter, showing JQL: {jql_query[:50]}..."
+            )
+
+            # Show JQL as execute item (same as manual JQL input)
+            # KEEPALL keeps Keypirinha open for Tab execution
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {jql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_jql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=jql_query,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
 
         # Handle #edit - Open config file
         elif (
