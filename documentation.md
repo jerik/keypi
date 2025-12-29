@@ -1,6 +1,6 @@
 # KeyPi - Jira Query Explorer
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 
 ---
 
@@ -11,6 +11,7 @@ KeyPi-JQE ist ein Keypirinha-Plugin zum Abfragen von Jira Cloud mittels JQL.
 **Funktionen:**
 - JQL-Queries aus Keypirinha ausführen
 - Ergebnisse als filterbare Liste
+- JQL Shortcuts für häufige Queries
 - Tickets im Browser öffnen
 
 ---
@@ -67,6 +68,39 @@ Nach Ausführung der JQL-Query kannst du die Ergebnisse filtern:
 - Schnelles Durchsuchen großer Ergebnislisten
 - Filter durchsucht: Ticket-ID, Summary, Status
 
+### JQL Shortcuts
+
+Spare Zeit mit wiederverwendbaren Shortcuts für häufige Queries!
+
+**Shortcuts definieren** in `keypi_jqe.ini`:
+
+```ini
+[jql_shortcuts]
+me = assignee = currentUser()
+open = status = "Open"
+mytask = assignee = currentUser() AND status = "Open"
+```
+
+**Shortcuts verwenden:**
+
+1. **Alle Shortcuts anzeigen**:
+   - Tippe: `jqe` → `#` → Liste aller Shortcuts erscheint
+
+2. **Shortcut filtern**:
+   - Tippe: `jqe` → `#me` → Zeigt Shortcuts mit "me" im Namen
+
+3. **Shortcut ausführen**:
+   - Wähle Shortcut → `Enter` → Query wird ausgeführt
+
+4. **Config bearbeiten**:
+   - Tippe: `jqe` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+**Vorteile:**
+- 🚀 Spare Zeit bei häufigen Queries
+- 🎯 Keine komplexe JQL-Syntax merken
+- ✏️ Einfach zu editieren und teilen
+- 🔄 Shortcuts sind case-insensitive (#Me = #me)
+
 ### Konfiguration
 
 Das Keyword ist konfigurierbar in `keypi_jqe.ini`:
@@ -122,6 +156,14 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog
 
+### Version 1.2.0 (2025-12-22)
+- **Neu:** JQL Shortcuts für häufige Queries
+- **Neu:** # Prefix für Shortcut-Zugriff (#me, #open, etc.)
+- **Neu:** #edit öffnet Config-Datei zum Bearbeiten
+- **Neu:** Liste aller Shortcuts mit # anzeigen
+- **Feature:** Case-insensitive Shortcut-Matching
+- **UX:** Direkte Ausführung ohne sichtbare JQL-Expansion
+
 ### Version 1.1.0 (2025-12-19)
 - **Neu:** Two-Phase Filter Mode (JQL Input → Filter Results)
 - **Neu:** Konfigurierbares Keyword (default: "jqe")
@@ -137,4 +179,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | v1.1.0
+**Ende** | v1.2.0

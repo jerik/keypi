@@ -84,6 +84,12 @@ The default repository is maintained by myself, it's called "ueffel's Package Re
 Submit your own package
 If you created your own package and want it to be available via PackageControl to other Keypirinha users you can submit it [here]/https://ue.spdns.de/packagecontrol/new_package). The preferred way of publishing is GitHub. Your package repository should have the ready-to-use .keypirinha-package file in the release section. The package repository looks for the newest release (not pre-release) that has such a file and exposes it.
 
+## Know Bugs
+### Bug Shortcut UX - Auswahl der Shortcuts aus den Liste der Shortcuts funktioniert nicht 
+Die angezeigte Liste der Shortcuts funktioniert nicht 100%. 
+a) Als User möchte ich, dass bei der Eingabe von #, mir alle definierten Shortcuts aufgelistet werden. --> erfolgreich
+b) Aus diesen Shortcuts kann ich einen auswählen. --> fehlerhaft, auswahl mit den Pfeiltasten + Enter funktioniert nicht. Man muss den shortcut voll ausschreiben, dann funktioniert es.
+
 ---
 
 **Legende:**

@@ -2,7 +2,7 @@
 
 **Purpose**: Best Practices, Pitfalls, and Insights for Keypirinha Plugin Development
 **Audience**: Claude (primary), Erik (contributor)
-**Updated**: 2025-12-20
+**Updated**: 2025-12-22
 
 ---
 
@@ -92,6 +92,46 @@
   ```
 - 💡 **Lesson (v1.1.0)**: Catalog doesn't auto-update on config change
 
+### INI Config Handling
+- ✅ **DO**: Use `settings.has_section()` before iterating
+  ```python
+  if settings.has_section("jql_shortcuts"):
+      for key in settings.keys("jql_shortcuts"):
+          value = settings.get_stripped(key, section="jql_shortcuts")
+  ```
+- ✅ **DO**: INI format supports `=` in values
+  ```ini
+  me = assignee = currentUser()  # Works fine!
+  ```
+- 💡 **Lesson (v1.2.0)**: Keypirinha's INI parser handles `=` in values correctly
+
+### Prefix-Based Features
+- ✅ **DO**: Use prefix detection for feature gating
+  ```python
+  if user_input.startswith("#"):
+      # Handle shortcuts
+      self._handle_shortcut_input(user_input)
+  ```
+- ✅ **DO**: Case-insensitive matching for better UX
+  ```python
+  shortcut_name = user_input[1:].lower()  # Remove # and lowercase
+  self._jql_shortcuts[key.lower()] = value  # Store lowercase
+  ```
+- 💡 **Lesson (v1.2.0)**: Prefix patterns enable clean feature separation
+
+### File Path Resolution
+- ✅ **DO**: Use `kpu.shell_known_folder_path()` for system paths
+  ```python
+  config_path = os.path.join(
+      kpu.shell_known_folder_path(kpu.FOLDERID.RoamingAppData),
+      "Keypirinha",
+      "User",
+      "keypi_jqe.ini"
+  )
+  kpu.shell_execute(config_path)  # Opens with default editor
+  ```
+- 💡 **Lesson (v1.2.0)**: System folders accessible via Keypirinha utils
+
 ---
 
 ## 📝 Code Patterns
@@ -174,6 +214,23 @@ short_desc = (
 ```
 💡 Consistent formatting makes results scannable
 
+### Direct Execution Pattern
+- ✅ **DO**: Execute shortcuts directly without showing expansion
+  ```python
+  # User sees:    #me
+  # User doesn't see: assignee = currentUser()
+  # Result: Direct execution → better UX
+  ```
+- ✅ **DO**: Store expanded value in `data_bag` for execution
+  ```python
+  self.create_item(
+      label=f"#{shortcut_name}",
+      short_desc=jql_query,  # Show JQL in description
+      data_bag=jql_query,    # Store for execution
+  )
+  ```
+- 💡 **Lesson (v1.2.0)**: Hide implementation details for cleaner UX
+
 ---
 
 ## 🧪 Testing Strategies
@@ -255,6 +312,7 @@ Phase 2: Filter Mode
 ---
 
 **Version History:**
+- **2025-12-22**: v1.2.0 update (JQL Shortcuts - INI handling, prefix detection, file paths)
 - **2025-12-20**: Initial version (based on v1.0.0 MVP + v1.1.0 Filter Feature)
 
 ---
