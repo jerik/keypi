@@ -27,9 +27,17 @@ Optional:
 wenn ich als jql_shortcut '#config' eingebe soll die die configdatei im standard editor aufgerufen werden, damit ich die jql_shortcuts bearbeiten kann. 
 
 ## Akzeptanzkriterien 
-Als User möchte ich jql_shortcuts verwalten können, damit ich weiss welche shortcuts ich definiert habe
-Als User möchte ich die definierten shortcuts im plugin aufrufen können. Die shortcuts beginnen mit #, gefolgt von dem shortcut namen, bspw. #me
-Als User möchte ich die shortscust im jql mode aufrufen können
-Als User möchte ich dass der hinter dem shortcut hinterlegte jql query im weiteren Prozess genutzt wird, d.h. die jql wird ausgeführt und in keypirinha sehe ich die ergebnisliste wie bisher auch
-Als User möchte ich, dass bei der Eingabe von #, mir alle definierten Shortcuts aufgelistet werden. Aus diesen Shortcuts kann ich einen auswählen. 
-Optional: Als User möchte ich bei der eingabe von #edit, das die datei mit den shortcuts im standard-editor geöffnet werden, damit ich diese editieren kann. 
+1. Als User möchte ich jql_shortcuts verwalten können, damit ich weiss welche shortcuts ich definiert habe
+2. Als User möchte ich die definierten shortcuts im plugin aufrufen können. Die shortcuts beginnen mit #, gefolgt von dem shortcut namen, bspw. #me
+3. Als User möchte ich die shortscust im jql mode aufrufen können
+4. Als User möchte ich dass der hinter dem shortcut hinterlegte jql query im weiteren Prozess genutzt wird, d.h. die jql wird ausgeführt und in keypirinha sehe ich die ergebnisliste wie bisher auch
+5. Als User möchte ich, dass bei der Eingabe von #, mir alle definierten Shortcuts aufgelistet werden. Aus diesen Shortcuts kann ich einen auswählen. 
+6. Optional: Als User möchte ich bei der eingabe von #edit, das die datei mit den shortcuts im standard-editor geöffnet werden, damit ich diese editieren kann. 
+
+# Abnahme
+Das Feature ist soweit abgenommen und funktionstüchtig. Akzeptanzkriterium 5, funktioniert nicht 100% aber das ist vertretbar. 
+
+5. a) Als User möchte ich, dass bei der Eingabe von #, mir alle definierten Shortcuts aufgelistet werden. --> erfolgreich
+   b) Aus diesen Shortcuts kann ich einen auswählen. --> fehlerhaft, auswahl mit den Pfeiltasten + Enter funktioniert nicht. Man muss den shortcut voll ausschreiben, dann funktioniert es.
+
+Das nehme ich mit auf ins Backlog. 
