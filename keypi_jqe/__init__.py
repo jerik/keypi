@@ -22,7 +22,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0"  # JQL Shortcuts feature complete!
+    VERSION = "1.2.0-dev.7"  # Auto-expand shortcuts on exact match
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -582,42 +582,92 @@ class JiraQueryExplorer(kp.Plugin):
                     )
                 )
         else:
+            # User typed something after # (e.g., "#me", "#m", "#o")
             self.info(f"Filtering shortcuts with: '{shortcut_name}'")
-            # Filter shortcuts by name (case-insensitive prefix match)
-            # Check if "edit" matches
-            if "edit".startswith(shortcut_name):
-                self.info(f"'edit' matches '{shortcut_name}' (prefix match)")
+
+            # Check for EXACT match first - if found, show JQL execute item directly
+            exact_match_jql = None
+            if shortcut_name in self._jql_shortcuts:
+                exact_match_jql = self._jql_shortcuts[shortcut_name]
+                self.info(
+                    f"EXACT MATCH found: '{shortcut_name}' -> {exact_match_jql[:50]}..."
+                )
+            elif shortcut_name == "edit":
+                # Special case: #edit exact match
+                self.info("EXACT MATCH found: 'edit' -> open config")
+                # Open config and return
+                plugin_dir = os.path.dirname(__file__)
+                config_path = os.path.join(
+                    plugin_dir, "..", "..", "User", "keypi_jqe.ini"
+                )
+                config_path = os.path.abspath(config_path)
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
                         label="#edit",
-                        short_desc="Open shortcuts configuration file",
+                        short_desc="Press Enter to open config file",
                         target="edit_config",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.KEEPALL,
                     )
                 )
-            else:
-                self.info(f"'edit' does NOT match '{shortcut_name}'")
 
-            # Check JQL shortcuts
-            for name, jql in sorted(self._jql_shortcuts.items()):
-                self.info(f"Checking shortcut '{name}' against '{shortcut_name}'")
-                if name.startswith(shortcut_name):
-                    self.info(f"  -> '{name}' MATCHES (prefix match)")
+            # If exact match found, show JQL execute item (like manual JQL input)
+            if exact_match_jql:
+                self.info(
+                    f"Showing execute item for exact match: {exact_match_jql[:50]}..."
+                )
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {exact_match_jql}",
+                        short_desc="Press Enter to execute query",
+                        target="execute_jql",
+                        args_hint=kp.ItemArgsHint.REQUIRED,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=exact_match_jql,
+                    )
+                )
+            else:
+                # No exact match - show prefix matches (shortcuts for further typing)
+                self.info(
+                    f"No exact match, showing prefix matches for: '{shortcut_name}'"
+                )
+
+                # Check if "edit" matches as prefix
+                if "edit".startswith(shortcut_name):
+                    self.info(f"'edit' matches '{shortcut_name}' (prefix match)")
                     suggestions.append(
                         self.create_item(
                             category=self.ITEMCAT_SHORTCUT,
-                            label=f"#{name}",
-                            short_desc=jql,
-                            target=f"shortcut_{name}",  # Unique target per shortcut
-                            args_hint=kp.ItemArgsHint.ACCEPTED,  # Allow Enter to add to chain
-                            hit_hint=kp.ItemHitHint.IGNORE,  # Reset hit hint
-                            data_bag=jql,  # Store JQL for execution
+                            label="#edit",
+                            short_desc="Open shortcuts configuration file",
+                            target="edit_config",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
                         )
                     )
                 else:
-                    self.info(f"  -> '{name}' does NOT match")
+                    self.info(f"'edit' does NOT match '{shortcut_name}'")
+
+                # Check JQL shortcuts for prefix matches
+                for name, jql in sorted(self._jql_shortcuts.items()):
+                    self.info(f"Checking shortcut '{name}' against '{shortcut_name}'")
+                    if name.startswith(shortcut_name):
+                        self.info(f"  -> '{name}' MATCHES (prefix match)")
+                        suggestions.append(
+                            self.create_item(
+                                category=self.ITEMCAT_SHORTCUT,
+                                label=f"#{name}",
+                                short_desc=jql,
+                                target=f"shortcut_{name}",
+                                args_hint=kp.ItemArgsHint.ACCEPTED,
+                                hit_hint=kp.ItemHitHint.IGNORE,
+                                data_bag=jql,
+                            )
+                        )
+                    else:
+                        self.info(f"  -> '{name}' does NOT match")
 
         if not suggestions:
             # No shortcuts found
