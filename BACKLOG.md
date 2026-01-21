@@ -28,6 +28,14 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 
 ---
 ## Minor Bugs
+
+### CQE: Space-Name wird nicht korrekt ausgelesen
+**Plugin:** Confluence Query Explorer (CQE)
+Erwartetes Verhalten: Der Space-Name wird korrekt aus der API-Response extrahiert und angezeigt
+Aktuelles Verhalten: Space-Name wird nicht korrekt ausgelesen/angezeigt
+Workaround: Funktioniert trotzdem, nur die Anzeige ist betroffen
+Prio: gering
+
 ### leere jql und man drück Enter 
 Erwartetes Verhalten: Es wird eine Fehlermeldung angezeigt, man ist weiterhin im jql mode
 Aktuelles Verhalten: die Launchbox schliesst sich. 
