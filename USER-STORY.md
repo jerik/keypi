@@ -1,28 +1,64 @@
 # Beschreibung
-Als User möchte ich das confluence mittels cfl (confluence query language) via keypirinha nutzen können. 
-Als User möchte ich das Kommando ff in keypirinha eingeben und dann in den query-mmodus gelangen. Dort kann ich dann die query eingeben. 
-Wenn ich im query-modus die Taste enter drücke soll, die query ausgeführt werden. 
-Als ergebnis sehe ich in keypirinha die ergebnisliste. Diese enthält im Minimum den Titel der Confluence Seite.
-Die Ergebnisse kann ich durch eingabe weitere Buchstaben in keypirinha entsprechend filtern. 
-Wenn ich einen Eintrag ausgewählt habe und Enter drücke, öffnet sich diese Confluence Seite im Browser. 
+Als User möchte ich Confluence mittels CQL (Confluence Query Language) via Keypirinha nutzen können.
+Als User möchte ich das Kommando **`cqe`** (default, konfigurierbar) in Keypirinha eingeben und dann in den Query-Modus gelangen. Dort kann ich dann die Query eingeben.
+Wenn ich im Query-Modus die Taste Enter drücke, soll die Query ausgeführt werden.
+Als Ergebnis sehe ich in Keypirinha die Ergebnisliste. Diese enthält im Minimum den Titel der Confluence Seite.
+Die Ergebnisse kann ich durch Eingabe weiterer Buchstaben in Keypirinha entsprechend filtern.
+Wenn ich einen Eintrag ausgewählt habe und Enter drücke, öffnet sich diese Confluence Seite im Browser.
 
-Es können die gleichen Settings wie beim jira-querey-plugin in diesem repository genutzt werden. Also API-key und URL. 
+Es können die gleichen Settings wie beim Jira-Query-Plugin in diesem Repository genutzt werden. Also API-Key und URL.
 
-Das confluence-query-plugin verhält sich ähnlich wie das jira-query-plugin: 
-- plugin mit keyword aufrufen
-- im query-modus die query eintippen
-- mit Enter die query ausführen
-- das Ergebnis ist über keypirinha filterbar
-- wird ein Eintrag ausgewählt wird dieser im Browser geöffnet.
+Das Confluence-Query-Plugin verhält sich ähnlich wie das Jira-Query-Plugin:
+- Plugin mit Keyword aufrufen
+- Im Query-Modus die Query eintippen
+- Mit Enter die Query ausführen
+- Das Ergebnis ist über Keypirinha filterbar
+- Wird ein Eintrag ausgewählt wird dieser im Browser geöffnet
 
-## Akzeptanzkriterien 
-- Der User kann das Confluence-query-plugin in Keypirinha mit 'dd' aufrufen
-- Nach aufruf möchte ich die query in cfl eingeben können
-- Mit Enter wird die cfl ausgeführt
-- Sofern ein Ergebnis vorhandne ist, wird das angezeigt, ansonste eine Fehlermeldung, das nichts zurückgeliefert wurde
-- Das Ergebnis ist über Keypirinha filterbar, durch weitere Eingaben in Keypirinha.
-- Wählt der Nutzer einen Eintrag aus, wird der Eintrag im Browser geöffnet.
-- Es sollen die gleichen SEttings wie bei jira-query-plugin genutzt werden
+## Akzeptanzkriterien
+- Der User kann das Confluence-Query-Plugin in Keypirinha mit **`cqe`** (default) aufrufen
+- Das Keyword ist in der INI-Datei konfigurierbar (analog zu JQE)
+- Nach Aufruf möchte ich die Query in CQL eingeben können
+- Mit Enter wird die CQL ausgeführt
+- Sofern ein Ergebnis vorhanden ist, wird das angezeigt, ansonsten eine Fehlermeldung, dass nichts zurückgeliefert wurde
+- Das Ergebnis ist über Keypirinha filterbar, durch weitere Eingaben in Keypirinha
+- Wählt der Nutzer einen Eintrag aus, wird der Eintrag im Browser geöffnet
+- Es sollen die gleichen Settings wie bei Jira-Query-Plugin genutzt werden (API-Key, URL)
+
+## Technische Umsetzung
+
+### Projektstruktur
+```
+keypi/
+├── keypi_cqe/                   # Neues Confluence-Plugin-Package
+│   ├── __init__.py             # Plugin-Hauptklasse
+│   ├── lib/                    # Interne Libraries
+│   │   ├── __init__.py         # Package Marker
+│   │   └── confluence_client.py  # Confluence API Client Wrapper
+│   └── res/                    # Ressourcen & Konfiguration
+│       ├── keypi_cqe.ini       # Benutzer-Konfigurationsdatei (Template)
+│       ├── packages.json       # Package-Metadaten
+│       └── changelog/          # Versionshistorie
+```
+
+### API Integration
+- **Endpoint**: Confluence Cloud REST API v1 - `/rest/api/content/search`
+- **Query Parameter**: `cql=<query>`
+- **Authentifizierung**: Basic Auth (Email + API Token) - gleich wie Jira
+- **Relevante Felder**: `id`, `title`, `type`, `_links.webui` (für Browser-URL)
+
+### Implementation Tasks
+- [x] Create plugin structure (keypi_cqe/)
+- [x] Implement confluence_client.py (API wrapper)
+- [x] Implement plugin main class (inherit from keypirinha.plugin.Plugin)
+- [x] Implement two-phase workflow (CQL input → Filter results)
+- [x] Add configuration handling (keyword, credentials)
+- [x] Implement error handling (auth, network, API errors)
+- [x] Create INI template file
+- [x] Add changelog entry
+- [x] Update documentation.md
+- [ ] Manual testing with real Confluence instance
+- [x] Run DoD checks (ruff, tests)
 
 # Hilfreiche Informationen
 Hier sind die **offiziellen Links zur Confluence‑Cloud‑Dokumentation**, speziell für **API‑Queries mit der Confluence Query Language (CQL)** – also genau das, was du gesucht hast:

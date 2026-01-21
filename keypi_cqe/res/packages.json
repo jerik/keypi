@@ -1,0 +1,21 @@
+{
+    "schema_version": "2.0",
+    "packages": [
+        {
+            "name": "KeyPi-CQE",
+            "description": "Confluence Query Explorer - Query Confluence Cloud using CQL directly from Keypirinha",
+            "author": "Erik Heinz",
+            "homepage": "https://github.com/jerik/keypi",
+            "license": "MIT",
+            "tags": ["confluence", "cql", "query", "explorer", "cloud"],
+            "releases": [
+                {
+                    "version": "1.0.0",
+                    "url": "https://github.com/jerik/keypi/releases/download/v1.0.0-cqe/KeyPi-CQE.keypirinha-package",
+                    "date": "2025-01-21",
+                    "platforms": ["windows"]
+                }
+            ]
+        }
+    ]
+}
