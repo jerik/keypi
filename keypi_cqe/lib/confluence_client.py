@@ -128,8 +128,13 @@ class ConfluenceClient:
                 links = item.get("_links", {})
                 webui = links.get("webui", "")
 
-                # Construct full URL
-                full_url = f"{self.confluence_url}{webui}" if webui else ""
+                # Construct full URL with /wiki prefix
+                if webui:
+                    # Ensure the webui path has /wiki prefix
+                    wiki_path = webui if webui.startswith("/wiki") else f"/wiki{webui}"
+                    full_url = f"{self.confluence_url}{wiki_path}"
+                else:
+                    full_url = ""
 
                 # Extract version info
                 version = item.get("version", {})
