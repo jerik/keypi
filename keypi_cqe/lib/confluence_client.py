@@ -139,6 +139,14 @@ class ConfluenceClient:
                 # Extract version info
                 version = item.get("version", {})
                 version_number = version.get("number", 0)
+                last_modified = version.get("when", "")
+
+                # Format lastModified as ISO date (YYYY-MM-DD)
+                last_modified_date = ""
+                if last_modified:
+                    # Expected format: 2026-01-21T14:27:02.000Z
+                    # Extract just the date part
+                    last_modified_date = last_modified.split("T")[0]
 
                 parsed_item = {
                     "id": content_id,
@@ -147,6 +155,7 @@ class ConfluenceClient:
                     "space_key": space_key,
                     "space_name": space_name,
                     "version": version_number,
+                    "last_modified": last_modified_date,
                     "url": full_url,
                     "webui": webui,
                 }

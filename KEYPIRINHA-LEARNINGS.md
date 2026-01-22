@@ -311,9 +311,138 @@ Phase 2: Filter Mode
 
 ---
 
+## 🎭 Multi-Action Pattern
+
+### Item Actions
+- ✅ **DO**: Use `hit_hint=kp.ItemHitHint.KEEPALL` to allow Tab navigation to actions
+  ```python
+  self.create_item(
+      category=ITEMCAT_RESULT,
+      hit_hint=kp.ItemHitHint.KEEPALL,  # Allows Tab to access actions
+      args_hint=kp.ItemArgsHint.ACCEPTED,  # Accepts further input
+  )
+  ```
+- ✅ **DO**: Store complex data in `data_bag` as JSON
+  ```python
+  data_bag=json.dumps({"action": "copy_url", "url": page_url})
+  ```
+- ✅ **DO**: Check `items_chain[-1].category()` to detect Tab press on specific items
+  ```python
+  if len(items_chain) > 1 and items_chain[-1].category() == ITEMCAT_RESULT:
+      self._show_actions(items_chain[-1])
+  ```
+- 💡 **Lesson (CQE v1.1.0)**: Multi-action pattern requires KEEPALL hint and checking items_chain
+
+### Action Types
+- ✅ **DO**: Create separate ITEMCAT for actions to distinguish them in `on_execute()`
+  ```python
+  ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 1
+  ITEMCAT_ACTION = kp.ItemCategory.USER_BASE + 2
+  ```
+- ✅ **DO**: Provide clear labels describing what each action does
+  ```python
+  label="Open page: Page Title"
+  label="Copy URL: Page Title"
+  label="Edit page: Page Title"
+  ```
+- 💡 **Lesson (CQE v1.1.0)**: Descriptive action labels improve UX
+
+### Clipboard Integration
+- ✅ **DO**: Use `kpu.set_clipboard()` for copy operations
+  ```python
+  kpu.set_clipboard(url)  # Copy URL to clipboard
+  ```
+- ✅ **DO**: Consider NOT resetting mode after clipboard operations (user might copy multiple)
+  ```python
+  elif action_type == ACTION_COPY_URL:
+      kpu.set_clipboard(url)
+      # Don't reset - user might want to copy multiple URLs
+  ```
+- 💡 **Lesson (CQE v1.1.0)**: Clipboard actions benefit from keeping Launchbox open
+
+---
+
+## 🔗 URL Transformations
+
+### Regex Patterns for URL Manipulation
+- ✅ **DO**: Use regex to extract URL components for transformations
+  ```python
+  import re
+  match = re.match(r"(.*?/wiki/spaces/[^/]+)/pages/\d+", page_url)
+  if match:
+      base_path = match.group(1)
+      edit_url = f"{base_path}/pages/edit-v2/{page_id}"
+  ```
+- ✅ **DO**: Provide fallback behavior for malformed URLs
+  ```python
+  else:
+      self.warn(f"Could not parse URL: {page_url}")
+      return page_url  # Fallback to original
+  ```
+- 💡 **Lesson (CQE v1.1.0)**: URL transformations need robust regex + fallback
+
+### Edit Mode URLs
+- ✅ **DO**: Transform view URLs to edit URLs using consistent patterns
+  - View: `<base>/wiki/spaces/FOO/pages/123456/title`
+  - Edit: `<base>/wiki/spaces/FOO/pages/edit-v2/123456`
+- ✅ **DO**: Use page ID from API response, not from URL (they might differ)
+- 💡 **Lesson (CQE v1.1.0)**: Confluence edit URLs follow `/pages/edit-v2/{id}` pattern
+
+---
+
+## 📊 Data Handling
+
+### Parsing API Responses
+- ✅ **DO**: Extract date fields and format them consistently
+  ```python
+  last_modified = version.get("when", "")
+  if last_modified:
+      last_modified_date = last_modified.split("T")[0]  # 2026-01-21
+  ```
+- ✅ **DO**: Provide fallback values for missing fields
+  ```python
+  last_mod = item.get('last_modified', 'N/A')
+  ```
+- 💡 **Lesson (CQE v1.1.0)**: Date formatting should be ISO-8601 (YYYY-MM-DD) for consistency
+
+### JSON in data_bag
+- ✅ **DO**: Store complex objects as JSON in `data_bag`
+  ```python
+  import json
+  data_bag=json.dumps(item)  # Store entire item
+  item_data = json.loads(result_item.data_bag())  # Retrieve
+  ```
+- ✅ **DO**: Document what data is stored in `data_bag` for each item type
+- 💡 **Lesson (CQE v1.1.0)**: JSON serialization enables rich data passing between suggest/execute
+
+---
+
+## 🧪 Testing Strategies
+
+### Unit Test Structure
+- ✅ **DO**: Create separate test files for different components
+  ```
+  tests/
+    __init__.py
+    test_confluence_client.py  # API client tests
+    test_url_transformations.py  # URL manipulation tests
+  ```
+- ✅ **DO**: Test edge cases: missing fields, malformed data, empty responses
+- ✅ **DO**: Test URL transformations with various formats (encoded, plus signs, etc.)
+- 💡 **Lesson (CQE v1.1.0)**: Comprehensive tests catch API response variations
+
+### Test Coverage
+- ✅ **DO**: Test date parsing with different formats
+- ✅ **DO**: Test URL transformations with edge cases (short/long space keys, special chars)
+- ✅ **DO**: Test fallback behavior for malformed inputs
+- 💡 **Lesson (CQE v1.1.0)**: Test both happy path and error cases
+
+---
+
 **Version History:**
-- **2025-12-22**: v1.2.0 update (JQL Shortcuts - INI handling, prefix detection, file paths)
-- **2025-12-20**: Initial version (based on v1.0.0 MVP + v1.1.0 Filter Feature)
+- **2026-01-22**: CQE v1.1.0 update (Multi-actions, URL transformations, lastModified field, unit tests)
+- **2025-12-22**: JQE v1.2.0 update (JQL Shortcuts - INI handling, prefix detection, file paths)
+- **2025-12-20**: Initial version (based on JQE v1.0.0 MVP + v1.1.0 Filter Feature)
 
 ---
 
