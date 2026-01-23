@@ -23,3 +23,6 @@ Thumbs.db
 
 # Keypirinha specific
 *.keypirinha-package
+
+# Distribution archives
+*.zip
