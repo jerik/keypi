@@ -114,16 +114,8 @@ class ConfluenceQueryExplorer(kp.Plugin):
             items_chain: Chain of selected items
         """
         self.dbg(
-            f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}, chain_len={len(items_chain) if items_chain else 0}"
+            f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}"
         )
-
-        # Log items_chain details for debugging
-        if items_chain and len(items_chain) > 1:
-            last_item = items_chain[-1]
-            self.dbg(
-                f"[on_suggest] last_item: cat={last_item.category()}, "
-                f"label='{last_item.label()}', target='{last_item.target()}'"
-            )
 
         # Only process if our keyword is in the chain
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
@@ -270,16 +262,6 @@ class ConfluenceQueryExplorer(kp.Plugin):
             # Cache the CQL and results
             self._current_cql = cql_query
             self._cached_results = content_items if content_items else []
-
-            # Log first result for debugging (sample)
-            if content_items and len(content_items) > 0:
-                sample = content_items[0]
-                self.dbg(
-                    f"[API Response Sample] title='{sample.get('title', 'N/A')}', "
-                    f"space='{sample.get('space_name', 'N/A')}', "
-                    f"type='{sample.get('type', 'N/A')}', "
-                    f"lastMod='{sample.get('last_modified', 'N/A')}'"
-                )
 
             # Switch to FILTER mode
             self._current_mode = self.MODE_FILTER
