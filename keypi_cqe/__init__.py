@@ -29,7 +29,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -97,6 +97,14 @@ class ConfluenceQueryExplorer(kp.Plugin):
             f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}, chain_len={len(items_chain) if items_chain else 0}"
         )
 
+        # Log items_chain details for debugging
+        if items_chain and len(items_chain) > 1:
+            last_item = items_chain[-1]
+            self.dbg(
+                f"[on_suggest] last_item: cat={last_item.category()}, "
+                f"label='{last_item.label()}', target='{last_item.target()}'"
+            )
+
         # Only process if our keyword is in the chain
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
             return
@@ -144,9 +152,15 @@ class ConfluenceQueryExplorer(kp.Plugin):
 
         # Check if user pressed Tab on a result item (show actions)
         if len(items_chain) > 1 and items_chain[-1].category() == self.ITEMCAT_RESULT:
-            self.dbg("Tab pressed on result item - showing actions")
+            self.info("Tab pressed on result item - showing actions")
             self._show_actions(items_chain[-1])
             return
+        elif len(items_chain) > 1:
+            last_cat = items_chain[-1].category()
+            self.dbg(
+                f"[on_suggest] Not showing actions: last_cat={last_cat}, "
+                f"ITEMCAT_RESULT={self.ITEMCAT_RESULT}, match={last_cat == self.ITEMCAT_RESULT}"
+            )
 
         # State machine: Handle CQL mode vs Filter mode
         if self._current_mode == self.MODE_CQL:
@@ -248,6 +262,16 @@ class ConfluenceQueryExplorer(kp.Plugin):
             # Cache the CQL and results
             self._current_cql = cql_query
             self._cached_results = content_items if content_items else []
+
+            # Log first result for debugging (sample)
+            if content_items and len(content_items) > 0:
+                sample = content_items[0]
+                self.dbg(
+                    f"[API Response Sample] title='{sample.get('title', 'N/A')}', "
+                    f"space='{sample.get('space_name', 'N/A')}', "
+                    f"type='{sample.get('type', 'N/A')}', "
+                    f"lastMod='{sample.get('last_modified', 'N/A')}'"
+                )
 
             # Switch to FILTER mode
             self._current_mode = self.MODE_FILTER

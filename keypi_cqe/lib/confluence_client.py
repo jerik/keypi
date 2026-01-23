@@ -72,8 +72,19 @@ class ConfluenceClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode())
 
+            results = data.get("results", [])
+
+            # Log first raw result for debugging (sample only)
+            if results and len(results) > 0:
+                sample = results[0]
+                print(
+                    f"[CQE-DEBUG] Raw API sample: id={sample.get('id')}, "
+                    f"space={sample.get('space', {})}, "
+                    f"version={sample.get('version', {})}"
+                )
+
             # Parse and return content items
-            return self._parse_content(data.get("results", []))
+            return self._parse_content(results)
 
         except urllib.error.HTTPError as e:
             if e.code in (401, 403):
