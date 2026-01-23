@@ -313,39 +313,60 @@ Phase 2: Filter Mode
 
 ## 🎭 Multi-Action Pattern
 
-### Item Actions
-- ✅ **DO**: Use `hit_hint=kp.ItemHitHint.KEEPALL` to allow Tab navigation to actions
+### The Correct Way: set_actions()
+- ✅ **DO**: Use `set_actions()` in `on_start()` to register actions for item categories
+  ```python
+  def on_start(self):
+      self.set_actions(
+          self.ITEMCAT_RESULT,
+          [
+              self.create_action(name="open", label="Open page"),
+              self.create_action(name="copy_url", label="Copy URL"),
+              self.create_action(name="edit", label="Edit page"),
+          ],
+      )
+  ```
+- ✅ **DO**: Use `hit_hint=IGNORE` and `args_hint=FORBIDDEN` for actionable items
   ```python
   self.create_item(
       category=ITEMCAT_RESULT,
-      hit_hint=kp.ItemHitHint.KEEPALL,  # Allows Tab to access actions
-      args_hint=kp.ItemArgsHint.ACCEPTED,  # Accepts further input
+      hit_hint=kp.ItemHitHint.IGNORE,      # Standard hint
+      args_hint=kp.ItemArgsHint.FORBIDDEN,  # No additional args
   )
   ```
-- ✅ **DO**: Store complex data in `data_bag` as JSON
-  ```python
-  data_bag=json.dumps({"action": "copy_url", "url": page_url})
-  ```
-- ✅ **DO**: Check `items_chain[-1].category()` to detect Tab press on specific items
-  ```python
-  if len(items_chain) > 1 and items_chain[-1].category() == ITEMCAT_RESULT:
-      self._show_actions(items_chain[-1])
-  ```
-- 💡 **Lesson (CQE v1.1.0)**: Multi-action pattern requires KEEPALL hint and checking items_chain
+- ❌ **DON'T**: Use items_chain detection + KEEPALL pattern (doesn't work reliably)
+- 💡 **Lesson (CQE v1.1.0)**: set_actions() is the official Keypirinha way - see chrome-history plugin
 
-### Action Types
-- ✅ **DO**: Create separate ITEMCAT for actions to distinguish them in `on_execute()`
+### Handling Actions in on_execute()
+- ✅ **DO**: Check if action parameter is None (default action) or has specific name
   ```python
-  ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 1
-  ITEMCAT_ACTION = kp.ItemCategory.USER_BASE + 2
+  def on_execute(self, item, action):
+      if item.category() == ITEMCAT_RESULT:
+          if not action:
+              # Default action (Enter pressed)
+              kpu.shell_execute(item.target())
+          elif action.name() == "copy_url":
+              # Tab -> Select action
+              kpu.set_clipboard(item.target())
+          elif action.name() == "edit":
+              # Custom action
+              edit_url = self._generate_edit_url(item.target())
+              kpu.shell_execute(edit_url)
   ```
-- ✅ **DO**: Provide clear labels describing what each action does
+- ✅ **DO**: Store full item data in `data_bag` as JSON for complex items
   ```python
-  label="Open page: Page Title"
-  label="Copy URL: Page Title"
-  label="Edit page: Page Title"
+  data_bag=json.dumps({"id": page_id, "url": page_url, "title": title})
   ```
-- 💡 **Lesson (CQE v1.1.0)**: Descriptive action labels improve UX
+- 💡 **Lesson (CQE v1.1.0)**: action parameter can be None - always check!
+
+### Action Best Practices
+- ✅ **DO**: Provide clear, descriptive action labels
+  ```python
+  self.create_action(name="open", label="Open page", short_desc="Open page in browser")
+  ```
+- ✅ **DO**: Keep action names simple (lowercase, underscore-separated)
+- ✅ **DO**: First action is default (shown when user presses Enter without Tab)
+- 💡 **Lesson (CQE v1.1.0)**: Action order matters - most common action first
 
 ### Clipboard Integration
 - ✅ **DO**: Use `kpu.set_clipboard()` for copy operations
@@ -354,7 +375,7 @@ Phase 2: Filter Mode
   ```
 - ✅ **DO**: Consider NOT resetting mode after clipboard operations (user might copy multiple)
   ```python
-  elif action_type == ACTION_COPY_URL:
+  elif action.name() == "copy_url":
       kpu.set_clipboard(url)
       # Don't reset - user might want to copy multiple URLs
   ```
@@ -392,6 +413,18 @@ Phase 2: Filter Mode
 
 ## 📊 Data Handling
 
+### API Expand Parameters
+- ✅ **DO**: Use `expand` parameter to request full nested objects from API
+  ```python
+  params = {
+      "cql": cql_query,
+      "expand": "space,version",  # Request full space and version data
+  }
+  ```
+- ⚠️ **Pitfall**: Without expand, Confluence API returns empty objects `space={}`, `version={}`
+- ✅ **DO**: Check API documentation for available expand options
+- 💡 **Lesson (CQE v1.1.0)**: Always use expand for nested data - saves debugging time!
+
 ### Parsing API Responses
 - ✅ **DO**: Extract date fields and format them consistently
   ```python
@@ -402,6 +435,10 @@ Phase 2: Filter Mode
 - ✅ **DO**: Provide fallback values for missing fields
   ```python
   last_mod = item.get('last_modified', 'N/A')
+  ```
+- ✅ **DO**: Log sample API responses during debugging to verify data structure
+  ```python
+  self.dbg(f"[API Sample] space={sample.get('space')}, version={sample.get('version')}")
   ```
 - 💡 **Lesson (CQE v1.1.0)**: Date formatting should be ISO-8601 (YYYY-MM-DD) for consistency
 

@@ -29,8 +29,8 @@ Query Confluence Cloud using CQL (Confluence Query Language) directly from Keypi
 - ⚡ Execute CQL queries instantly
 - 🔍 Two-phase workflow: Query → Filter results locally
 - 🎨 Configurable keyword (default: `cqe`)
-- 🌐 Open pages in browser
-- 📄 Display: Page title, Space, Type
+- 🎯 Multi-Action Support: Open, Copy URL, Edit page (Tab menu)
+- 📄 Display: Page title, Space, Type, Last Modified date
 
 **Shared Features:**
 - 🔐 Secure API token authentication
@@ -162,7 +162,21 @@ filter = 12345
 3. **Enter CQL query**: `type=page AND space=MYSPACE`
 4. **Press Enter** to execute
 5. **Filter results** by typing more text
-6. **Select page** and press Enter to open in browser
+6. **Select page**:
+   - **Press Enter** to open in browser
+   - **Press Tab** to see action menu (Open, Copy URL, Edit page)
+
+#### Multi-Action Menu (New in v1.1.0)
+
+Each search result offers multiple actions via Tab:
+
+1. **Open page** - Open page in browser (view mode) - Default action with Enter
+2. **Copy URL** - Copy page URL to clipboard
+3. **Edit page** - Open page directly in edit mode
+
+**Usage:**
+- Select page → **Tab** → Action menu appears
+- Select action → **Enter** → Action executes
 
 #### Example queries:
 ```cql
@@ -292,6 +306,15 @@ critical = priority = Highest AND status != "Done"
 - ✨ JQL query execution
 - ✨ Display tickets with key info
 - ✨ Open tickets in browser
+
+### Confluence Query Explorer v1.1.0 (2026-01-23)
+- ✨ Multi-Action Support (Tab menu)
+  - Open page (default)
+  - Copy URL to clipboard
+  - Edit page (opens edit mode directly)
+- 📊 Enhanced result display: Space, Type, Last Modified date
+- 🚀 API expand parameter for full data
+- ✅ 15 unit tests for reliability
 
 ### Confluence Query Explorer v1.0.0 (2025-01-21)
 - 🎉 Initial release
