@@ -7,6 +7,7 @@ import keypirinha as kp
 import keypirinha_util as kpu
 import os
 import sys
+import json
 
 # Add lib directory to path
 _LIB_DIR = os.path.join(os.path.dirname(__file__), "lib")
@@ -22,7 +23,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.2.0-dev.7"  # Auto-expand shortcuts on exact match
+    VERSION = "1.3.0-dev.1"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -33,6 +34,10 @@ class JiraQueryExplorer(kp.Plugin):
     # Modes
     MODE_JQL = "jql"
     MODE_FILTER = "filter"
+
+    # Action names (for set_actions)
+    ACTION_OPEN = "open"
+    ACTION_COPY_URL = "copy_url"
 
     def __init__(self):
         super().__init__()
@@ -57,6 +62,23 @@ class JiraQueryExplorer(kp.Plugin):
         self.info(f"JiraQueryExplorer v{self.VERSION} loaded")
         # Reset state to ensure clean start
         self._reset_to_jql_mode()
+
+        # Register actions for result items
+        self.set_actions(
+            self.ITEMCAT_RESULT,
+            [
+                self.create_action(
+                    name=self.ACTION_OPEN,
+                    label="Open ticket",
+                    short_desc="Open Jira ticket in browser (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_COPY_URL,
+                    label="Copy URL",
+                    short_desc="Copy ticket URL to clipboard",
+                ),
+            ],
+        )
 
     def on_catalog(self):
         """
@@ -262,7 +284,7 @@ class JiraQueryExplorer(kp.Plugin):
                             target=issue["url"],
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.IGNORE,
-                            data_bag=issue["key"],
+                            data_bag=json.dumps(issue),
                         )
                     )
                 self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
@@ -324,7 +346,7 @@ class JiraQueryExplorer(kp.Plugin):
                         target=issue["url"],
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.IGNORE,
-                        data_bag=issue["key"],
+                        data_bag=json.dumps(issue),
                     )
                 )
 
@@ -430,12 +452,29 @@ class JiraQueryExplorer(kp.Plugin):
             kpu.shell_execute(config_path)
 
         # Handle FILTER mode - Open Jira ticket URL in browser
+        # Handle RESULT items with actions
         elif item.category() == self.ITEMCAT_RESULT:
-            ticket_key = item.data_bag()
-            self.info(f"Opening ticket: {ticket_key}")
-            kpu.shell_execute(item.target())
-            # Reset to JQL mode after opening ticket
-            self._reset_to_jql_mode()
+            issue_data = json.loads(item.data_bag())
+            ticket_url = item.target()
+            ticket_key = issue_data["key"]
+
+            if not action:
+                # Default action (Enter): Open ticket
+                self.info(f"Default action: Opening ticket {ticket_key}")
+                kpu.shell_execute(ticket_url)
+                self._reset_to_jql_mode()
+
+            elif action.name() == self.ACTION_OPEN:
+                # Open ticket action
+                self.info(f"Action: Open ticket - {ticket_key}")
+                kpu.shell_execute(ticket_url)
+                self._reset_to_jql_mode()
+
+            elif action.name() == self.ACTION_COPY_URL:
+                # Copy URL to clipboard
+                self.info(f"Action: Copy URL - {ticket_key}")
+                kpu.set_clipboard(ticket_url)
+                # Don't reset mode - user might want to copy multiple URLs
 
     def _reset_to_jql_mode(self):
         """Reset plugin state to JQL mode"""
