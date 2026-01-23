@@ -7,6 +7,8 @@ import keypirinha as kp
 import keypirinha_util as kpu
 import os
 import sys
+import json
+import re
 
 # Add lib directory to path
 _LIB_DIR = os.path.join(os.path.dirname(__file__), "lib")
@@ -27,7 +29,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -37,6 +39,11 @@ class ConfluenceQueryExplorer(kp.Plugin):
     # Modes
     MODE_CQL = "cql"
     MODE_FILTER = "filter"
+
+    # Action names (for set_actions)
+    ACTION_OPEN = "open"
+    ACTION_COPY_URL = "copy_url"
+    ACTION_EDIT = "edit"
 
     def __init__(self):
         super().__init__()
@@ -58,6 +65,28 @@ class ConfluenceQueryExplorer(kp.Plugin):
         self.info(f"ConfluenceQueryExplorer v{self.VERSION} loaded")
         # Reset state to ensure clean start
         self._reset_to_cql_mode()
+
+        # Register actions for result items
+        self.set_actions(
+            self.ITEMCAT_RESULT,
+            [
+                self.create_action(
+                    name=self.ACTION_OPEN,
+                    label="Open page",
+                    short_desc="Open page in browser (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_COPY_URL,
+                    label="Copy URL",
+                    short_desc="Copy page URL to clipboard",
+                ),
+                self.create_action(
+                    name=self.ACTION_EDIT,
+                    label="Edit page",
+                    short_desc="Open page in edit mode",
+                ),
+            ],
+        )
 
     def on_catalog(self):
         """
@@ -85,7 +114,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
             items_chain: Chain of selected items
         """
         self.dbg(
-            f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}, chain_len={len(items_chain) if items_chain else 0}"
+            f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}"
         )
 
         # Only process if our keyword is in the chain
@@ -199,7 +228,9 @@ class ConfluenceQueryExplorer(kp.Plugin):
                 suggestions = []
                 for item in filtered_results:
                     label = f"{item['title']}"
-                    short_desc = f"Space: {item['space_name']} | Type: {item['type']}"
+                    # Format: Space: FOO | Type: page | LastMod: 2026-01-21
+                    last_mod = item.get("last_modified", "N/A")
+                    short_desc = f"Space: {item['space_name']} | Type: {item['type']} | LastMod: {last_mod}"
 
                     suggestions.append(
                         self.create_item(
@@ -209,7 +240,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
                             target=item["url"],
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.IGNORE,
-                            data_bag=item["id"],
+                            data_bag=json.dumps(item),
                         )
                     )
                 self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
@@ -259,7 +290,9 @@ class ConfluenceQueryExplorer(kp.Plugin):
                 label = f"{item['title']}"
 
                 # Additional info for description
-                short_desc = f"Space: {item['space_name']} | Type: {item['type']}"
+                # Format: Space: FOO | Type: page | LastMod: 2026-01-21
+                last_mod = item.get("last_modified", "N/A")
+                short_desc = f"Space: {item['space_name']} | Type: {item['type']} | LastMod: {last_mod}"
 
                 suggestions.append(
                     self.create_item(
@@ -269,7 +302,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
                         target=item["url"],
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.IGNORE,
-                        data_bag=item["id"],
+                        data_bag=json.dumps(item),
                     )
                 )
 
@@ -322,7 +355,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
 
         Args:
             item: Selected catalog item
-            action: Action to execute
+            action: Action to execute (can be None for default action)
         """
         # Handle CQL mode - Execute query when Enter is pressed (fallback)
         # NOTE: Tab is recommended (keeps Launchbox open), Enter closes it
@@ -331,13 +364,36 @@ class ConfluenceQueryExplorer(kp.Plugin):
             self.info(f"Enter pressed - executing: {cql_query[:50]}...")
             self._execute_cql_query(cql_query)
 
-        # Handle FILTER mode - Open Confluence page URL in browser
+        # Handle RESULT items with actions
         elif item.category() == self.ITEMCAT_RESULT:
-            content_id = item.data_bag()
-            self.info(f"Opening content: {content_id}")
-            kpu.shell_execute(item.target())
-            # Reset to CQL mode after opening page
-            self._reset_to_cql_mode()
+            item_data = json.loads(item.data_bag())
+            page_url = item.target()
+            page_id = item_data["id"]
+
+            if not action:
+                # Default action (Enter): Open page
+                self.info(f"Default action: Opening content {page_id}")
+                kpu.shell_execute(page_url)
+                self._reset_to_cql_mode()
+
+            elif action.name() == self.ACTION_OPEN:
+                # Open page action
+                self.info(f"Action: Open page - {page_url}")
+                kpu.shell_execute(page_url)
+                self._reset_to_cql_mode()
+
+            elif action.name() == self.ACTION_COPY_URL:
+                # Copy URL to clipboard
+                self.info(f"Action: Copy URL - {page_url}")
+                kpu.set_clipboard(page_url)
+                # Don't reset mode - user might want to copy multiple URLs
+
+            elif action.name() == self.ACTION_EDIT:
+                # Open page in edit mode
+                edit_url = self._generate_edit_url(page_url, page_id)
+                self.info(f"Action: Edit page - {edit_url}")
+                kpu.shell_execute(edit_url)
+                self._reset_to_cql_mode()
 
     def _reset_to_cql_mode(self):
         """Reset plugin state to CQL mode"""
@@ -432,3 +488,29 @@ class ConfluenceQueryExplorer(kp.Plugin):
     def _is_configured(self):
         """Check if all required configuration values are set"""
         return bool(self.confluence_url and self.email and self.api_token)
+
+    def _generate_edit_url(self, page_url, page_id):
+        """
+        Generate edit URL from view URL
+
+        Normal URL: <confluence-url>/wiki/spaces/FOO/pages/687210497/foobar-seite
+        Edit URL: <confluence-url>/wiki/spaces/FOO/pages/edit-v2/687210497
+
+        Args:
+            page_url: Normal page URL
+            page_id: Page ID
+
+        Returns:
+            Edit mode URL
+        """
+        # Extract base URL and space key from page URL
+        # Pattern: <base>/wiki/spaces/<SPACE>/pages/<ID>/...
+        match = re.match(r"(.*?/wiki/spaces/[^/]+)/pages/\d+", page_url)
+        if match:
+            base_path = match.group(1)
+            edit_url = f"{base_path}/pages/edit-v2/{page_id}"
+            return edit_url
+        else:
+            # Fallback: use page_url as-is
+            self.warn(f"Could not parse URL for edit mode: {page_url}")
+            return page_url

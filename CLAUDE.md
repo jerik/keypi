@@ -254,6 +254,45 @@ pytest  # falls Tests vorhanden
 - **Zweck**: Nachvollziehbarkeit, welches Feature in welcher Version enthalten ist
 - **GitHub Releases**: Tags erscheinen automatisch als Releases in GitHub
 
+### Development Version Policy
+
+**WICHTIG:** Bei jedem Commit während der Entwicklung muss die Versionsnummer hochgezählt werden!
+
+#### Version-Format während Entwicklung
+- **Dev-Versionen**: `v{major}.{minor}.{patch}-dev.{counter}`
+- **Beispiel**: `v1.1.0-dev.1`, `v1.1.0-dev.2`, `v1.1.0-dev.3`, etc.
+- **Counter**: Startet bei 1, wird bei jedem Commit +1 erhöht
+
+#### Workflow
+1. **Feature Start**: Version auf `v{major}.{minor}.{patch}-dev.1` setzen
+   - Beispiel: `VERSION = "1.1.0-dev.1"`
+
+2. **Während Entwicklung**: Bei **jedem Commit** Version hochzählen
+   - Commit 1: `v1.1.0-dev.1`
+   - Commit 2: `v1.1.0-dev.2`
+   - Commit 3: `v1.1.0-dev.3`
+   - etc.
+
+3. **Feature fertig**: Bei finaler Dokumentation → Release-Version setzen
+   - Beispiel: `VERSION = "1.1.0"` (ohne `-dev.X`)
+
+#### Zweck
+- **Debugging**: Im Keypirinha-Log sehen welche Version läuft
+- **Nachvollziehbarkeit**: Jeder Commit hat eindeutige Version
+- **Testen**: User kann sicher sein dass neue Version geladen wurde
+
+#### Beispiel aus Log
+```
+ConfluenceQueryExplorer v1.1.0-dev.3 loaded  # Dev-Version
+JiraQueryExplorer v1.2.0-dev.7 loaded        # Anderes Plugin, 7. Commit
+```
+
+#### Plugin-spezifische Dateien
+- **JQE Plugin**: `keypi_jqe/__init__.py` → `VERSION = "..."`
+- **CQE Plugin**: `keypi_cqe/__init__.py` → `VERSION = "..."`
+
+**Regel:** Vergiss NIEMALS die Version bei Commits zu erhöhen - sonst wissen wir nicht welche Version läuft!
+
 ---
 
 ## 📚 Nützliche Ressourcen

@@ -1,7 +1,7 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
 **Jira Plugin Version:** 1.2.0
-**Confluence Plugin Version:** 1.0.0
+**Confluence Plugin Version:** 1.1.0
 
 ---
 
@@ -201,8 +201,9 @@ Keypirinha-Konsole: `F2`
 ## Funktionen
 - CQL-Queries aus Keypirinha ausführen
 - Confluence-Seiten durchsuchen
-- Ergebnisse als filterbare Liste
-- Seiten im Browser öffnen
+- Ergebnisse als filterbare Liste mit erweiterten Infos (Space, Type, LastModified)
+- **Multi-Action Support**: Tab-Menü mit mehreren Aktionen
+- Seiten im Browser öffnen, URLs kopieren oder im Edit-Modus öffnen
 
 ---
 
@@ -253,6 +254,7 @@ Nach Ausführung der CQL-Query kannst du die Ergebnisse filtern:
 
 1. CQL eingeben: `type=page AND space=DOC` → `Enter`
 2. Ergebnisse werden angezeigt (z.B. 50 Seiten)
+   - Format: `Titel | Space: FOO | Type: page | LastMod: 2026-01-22`
 3. Weiteren Text eingeben: `setup` → filtert Ergebnisse lokal
 4. Seite auswählen → `Enter` → öffnet im Browser
 
@@ -260,6 +262,31 @@ Nach Ausführung der CQL-Query kannst du die Ergebnisse filtern:
 - Keine zusätzlichen API-Calls beim Filtern
 - Schnelles Durchsuchen großer Ergebnislisten
 - Filter durchsucht: Titel, Space, Type
+- Zeigt wichtige Infos: Space, Type und letztes Änderungsdatum
+
+### Multi-Action Support (Neu in v1.1.0)
+
+Jeder Sucheintrag bietet mehrere Aktionen:
+
+**Standardaktion (Enter):**
+- Seite im Browser öffnen (Ansichtsmodus)
+
+**Action-Menü (Tab drücken):**
+1. **Open page**: Seite im Browser öffnen (Ansichtsmodus)
+2. **Copy URL**: Seiten-URL in Zwischenablage kopieren
+3. **Edit page**: Seite im Bearbeiten-Modus öffnen
+
+**Workflow:**
+1. Query ausführen → Ergebnisse erscheinen
+2. Seite auswählen
+3. **Tab** drücken → Action-Menü öffnet sich
+4. Action auswählen (mit Pfeiltasten oder weiteres Tab)
+5. **Enter** drücken → Action wird ausgeführt
+
+**Vorteile:**
+- 🚀 Schneller Zugriff auf häufige Aktionen
+- 📋 URLs kopieren ohne Browser zu öffnen
+- ✏️ Direkt in Bearbeiten-Modus springen
 
 ### Konfiguration
 
@@ -316,6 +343,19 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog (CQE)
 
+### Version 1.1.0 (2026-01-23)
+- **Neu:** Multi-Action Support (Tab-Menü mit 3 Aktionen)
+  - Open page (Standard-Aktion mit Enter)
+  - Copy URL (Kopiert URL in Zwischenablage)
+  - Edit page (Öffnet Seite im Bearbeiten-Modus)
+- **Neu:** Erweiterte Ergebnis-Anzeige
+  - Space-Name anzeigen
+  - Content-Type anzeigen (page, blogpost, etc.)
+  - LastModified-Datum anzeigen (YYYY-MM-DD)
+- **Verbesserung:** API expand-Parameter für vollständige Space/Version-Daten
+- **UX:** Konsistente Action-Muster wie andere Keypirinha-Plugins
+- **Testing:** 15 Unit-Tests für API-Parsing und URL-Transformationen
+
 ### Version 1.0.0 (2025-01-21)
 - **Initial Release:** Confluence Query Explorer
 - **Neu:** CQL-Queries ausführen
@@ -327,4 +367,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.2.0 | CQE v1.0.0
+**Ende** | JQE v1.2.0 | CQE v1.1.0
