@@ -35,14 +35,12 @@ class ConfluenceQueryExplorer(kp.Plugin):
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
     ITEMCAT_FILTER = kp.ItemCategory.USER_BASE + 3
-    ITEMCAT_ACTION = kp.ItemCategory.USER_BASE + 4
 
     # Modes
     MODE_CQL = "cql"
     MODE_FILTER = "filter"
-    MODE_ACTION = "action"
 
-    # Actions
+    # Action names (for set_actions)
     ACTION_OPEN = "open"
     ACTION_COPY_URL = "copy_url"
     ACTION_EDIT = "edit"
@@ -67,6 +65,28 @@ class ConfluenceQueryExplorer(kp.Plugin):
         self.info(f"ConfluenceQueryExplorer v{self.VERSION} loaded")
         # Reset state to ensure clean start
         self._reset_to_cql_mode()
+
+        # Register actions for result items
+        self.set_actions(
+            self.ITEMCAT_RESULT,
+            [
+                self.create_action(
+                    name=self.ACTION_OPEN,
+                    label="Open page",
+                    short_desc="Open page in browser (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_COPY_URL,
+                    label="Copy URL",
+                    short_desc="Copy page URL to clipboard",
+                ),
+                self.create_action(
+                    name=self.ACTION_EDIT,
+                    label="Edit page",
+                    short_desc="Open page in edit mode",
+                ),
+            ],
+        )
 
     def on_catalog(self):
         """
@@ -150,18 +170,6 @@ class ConfluenceQueryExplorer(kp.Plugin):
 
         self.dbg(f"MODE={self._current_mode}, CQL='{self._current_cql}'")
 
-        # Check if user pressed Tab on a result item (show actions)
-        if len(items_chain) > 1 and items_chain[-1].category() == self.ITEMCAT_RESULT:
-            self.info("Tab pressed on result item - showing actions")
-            self._show_actions(items_chain[-1])
-            return
-        elif len(items_chain) > 1:
-            last_cat = items_chain[-1].category()
-            self.dbg(
-                f"[on_suggest] Not showing actions: last_cat={last_cat}, "
-                f"ITEMCAT_RESULT={self.ITEMCAT_RESULT}, match={last_cat == self.ITEMCAT_RESULT}"
-            )
-
         # State machine: Handle CQL mode vs Filter mode
         if self._current_mode == self.MODE_CQL:
             # CQL Input Mode - NO API calls during typing
@@ -238,8 +246,8 @@ class ConfluenceQueryExplorer(kp.Plugin):
                             label=label,
                             short_desc=short_desc,
                             target=item["url"],
-                            args_hint=kp.ItemArgsHint.ACCEPTED,
-                            hit_hint=kp.ItemHitHint.KEEPALL,
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
                             data_bag=json.dumps(item),
                         )
                     )
@@ -310,8 +318,8 @@ class ConfluenceQueryExplorer(kp.Plugin):
                         label=label,
                         short_desc=short_desc,
                         target=item["url"],
-                        args_hint=kp.ItemArgsHint.ACCEPTED,
-                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
                         data_bag=json.dumps(item),
                     )
                 )
@@ -365,7 +373,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
 
         Args:
             item: Selected catalog item
-            action: Action to execute
+            action: Action to execute (can be None for default action)
         """
         # Handle CQL mode - Execute query when Enter is pressed (fallback)
         # NOTE: Tab is recommended (keeps Launchbox open), Enter closes it
@@ -374,36 +382,35 @@ class ConfluenceQueryExplorer(kp.Plugin):
             self.info(f"Enter pressed - executing: {cql_query[:50]}...")
             self._execute_cql_query(cql_query)
 
-        # Handle RESULT items - Open Confluence page URL in browser (default action)
+        # Handle RESULT items with actions
         elif item.category() == self.ITEMCAT_RESULT:
             item_data = json.loads(item.data_bag())
-            self.info(f"Opening content: {item_data['id']}")
-            kpu.shell_execute(item.target())
-            # Reset to CQL mode after opening page
-            self._reset_to_cql_mode()
+            page_url = item.target()
+            page_id = item_data["id"]
 
-        # Handle ACTION items - Execute specific action
-        elif item.category() == self.ITEMCAT_ACTION:
-            action_data = json.loads(item.data_bag())
-            action_type = action_data["action"]
-            url = action_data["url"]
-
-            if action_type == self.ACTION_OPEN:
-                # Open page in browser
-                self.info(f"Action: Open page - {url}")
-                kpu.shell_execute(url)
+            if not action:
+                # Default action (Enter): Open page
+                self.info(f"Default action: Opening content {page_id}")
+                kpu.shell_execute(page_url)
                 self._reset_to_cql_mode()
 
-            elif action_type == self.ACTION_COPY_URL:
+            elif action.name() == self.ACTION_OPEN:
+                # Open page action
+                self.info(f"Action: Open page - {page_url}")
+                kpu.shell_execute(page_url)
+                self._reset_to_cql_mode()
+
+            elif action.name() == self.ACTION_COPY_URL:
                 # Copy URL to clipboard
-                self.info(f"Action: Copy URL - {url}")
-                kpu.set_clipboard(url)
+                self.info(f"Action: Copy URL - {page_url}")
+                kpu.set_clipboard(page_url)
                 # Don't reset mode - user might want to copy multiple URLs
 
-            elif action_type == self.ACTION_EDIT:
+            elif action.name() == self.ACTION_EDIT:
                 # Open page in edit mode
-                self.info(f"Action: Edit page - {url}")
-                kpu.shell_execute(url)
+                edit_url = self._generate_edit_url(page_url, page_id)
+                self.info(f"Action: Edit page - {edit_url}")
+                kpu.shell_execute(edit_url)
                 self._reset_to_cql_mode()
 
     def _reset_to_cql_mode(self):
@@ -499,55 +506,6 @@ class ConfluenceQueryExplorer(kp.Plugin):
     def _is_configured(self):
         """Check if all required configuration values are set"""
         return bool(self.confluence_url and self.email and self.api_token)
-
-    def _show_actions(self, result_item):
-        """
-        Show available actions for a result item
-
-        Args:
-            result_item: The selected result item
-        """
-        # Parse item data from data_bag
-        item_data = json.loads(result_item.data_bag())
-        page_url = item_data["url"]
-        page_id = item_data["id"]
-        page_title = item_data["title"]
-
-        # Generate edit URL
-        edit_url = self._generate_edit_url(page_url, page_id)
-
-        # Create action items
-        actions = [
-            self.create_item(
-                category=self.ITEMCAT_ACTION,
-                label=f"Open page: {page_title}",
-                short_desc="Open page in browser (default action)",
-                target=page_url,
-                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.IGNORE,
-                data_bag=json.dumps({"action": self.ACTION_OPEN, "url": page_url}),
-            ),
-            self.create_item(
-                category=self.ITEMCAT_ACTION,
-                label=f"Copy URL: {page_title}",
-                short_desc="Copy page URL to clipboard",
-                target=page_url,
-                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.IGNORE,
-                data_bag=json.dumps({"action": self.ACTION_COPY_URL, "url": page_url}),
-            ),
-            self.create_item(
-                category=self.ITEMCAT_ACTION,
-                label=f"Edit page: {page_title}",
-                short_desc="Open page in edit mode",
-                target=edit_url,
-                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                hit_hint=kp.ItemHitHint.IGNORE,
-                data_bag=json.dumps({"action": self.ACTION_EDIT, "url": edit_url}),
-            ),
-        ]
-
-        self.set_suggestions(actions, kp.Match.ANY, kp.Sort.NONE)
 
     def _generate_edit_url(self, page_url, page_id):
         """

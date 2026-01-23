@@ -53,10 +53,12 @@ class ConfluenceClient:
         endpoint = f"{self.confluence_url}/wiki/rest/api/content/search"
 
         # Build query parameters
+        # expand: Get full space and version details
         params = {
             "cql": cql_query,
             "limit": max_results,
             "start": 0,
+            "expand": "space,version",
         }
 
         url = f"{endpoint}?{urllib.parse.urlencode(params)}"
