@@ -1,110 +1,80 @@
-# Userstory
+# User Story: JQE Multi-Actions
 
-Als Nutzer möchte ich folgede verbesserungen haben, 
-	1. bei der ergebnisliste des confluence-query-plugin soll der Space und das letzte aktualisierungsdatum genannte werden, damit ich das ergebnis besser einordnen kann
-	2. Einträge aus der Ergebnisliste soll mehrere Actions bekommen. Neben dem aufrufen von Der Webseite, möchte ich die URL kopieren können und die Seite im bearbeiten modus aufrufen können, um die Ergebnisse besesr in meinem Workflow nutzen zu könenn.
+**Plugin:** Jira Query Explorer (JQE)
+**Version:** 1.2.0 → 1.3.0
+**Datum:** 2026-01-23
 
-## Akzeptanzkriterien 
-- Als User möchte in in der Ergebnisliste pro Eintrag die Inforamtionen zum Space, Typ und das Aktualsierungsdatum sehen.
-- Als User möchte ich mehrere Actions zu einem Eintrag habe. 
-	- Wähle ich einen Eintrag aus und drücke Enter, wird die URL des Eintrages im Browser aufgerufen
-	- Wähle ich einen Eintrag aus und drücke Tabulator, werden mir in Keypirinha die möglichen Actions angezeigt. Das sind:  
-		- Open page (standard actions)
-		- Copy page URL - Die URL Der Seite wird in die Zwischenablege kopiert
-		- Open page in editmode - Die Seite wird im Editmodus im Browser geöffnet
+---
 
+## 📋 User Story
 
-## Details zu 2. Einträge sollen mehr Actions bekommen
-- Die Standard-Action ist, das die URL der Confluence Seite im Browser aufgrufen wird. Diese Action soll ausgeführt werden, wenn man den Eintrag in Keypirinha selektiert und Enter drückt
-- Selektiert man den Eintrag in Keypirinha und drückt Tabulator, werden die möglichen Actions angezeigt. Das sind:
-	- Aufruf der URL im Browser (Standard-Action)
-	- Kopieren der URL in die Zwischenablage
-	- Aufrufen der Confluence-Seite im Bearbeiten Modus
+Als Nutzer möchte ich folgende Verbesserungen im Jira Query Plugin haben:
+- Die Einträge aus der Ergebnisliste sollen mehrere Actions bekommen
+- Neben dem Aufrufen der Webseite möchte ich die URL kopieren können, um die Ergebnisse besser in meinem Workflow nutzen zu können
 
+---
 
-Wenn man die Normal URL der Confluence Seite aufruf gelangt man in den Ansicht Modus
-<confluence-baseurl>/wiki/spaces/FOO/pages/687210497/foobar-seite.html
+## ✅ Akzeptanzkriterien
 
-wechselt man in den bearbeiten modus der Conflunce-Seite sieht die URL folgendermassen aus: 
-<confluence-baseurl>/wiki/spaces/FOO/pages/edit-v2/687210497
+### 1. Multi-Action Support für Ergebnisse
+- [x] Als User möchte ich mehrere Actions zu einem Eintrag haben
+- [x] Wähle ich einen Eintrag aus und drücke **Enter**, wird die URL des Eintrags im Browser aufgerufen (Standard-Action)
+- [x] Wähle ich einen Eintrag aus und drücke **Tab**, werden mir in Keypirinha die möglichen Actions angezeigt
 
-Informationen zu keypirinha documentation
+### 2. Verfügbare Actions
+Die möglichen Actions sind:
+- [x] **Open ticket** - Öffnet Jira-Ticket im Browser (Standard-Action bei Enter)
+- [x] **Copy URL** - Kopiert Ticket-URL in die Zwischenablage
 
-- doku extending keyprinha: https://keypirinha.com/api.html
-- doku zu create_action: https://keypirinha.com/api/plugin.html - doku zu create_action
-- repo zu einem simplen keypirinha plugin was actions benutzt: https://github.com/TimberToe/keypirinha-todo-markdown/blob/master/src/todo-markdown.py
-- Liste von anderen keypirinha plugins repos: https://github.com/topics/keypirinha-plugin
+---
 
-## Details zu 1: Space und Aktualisierungsdatum auslesen
-Space ist im JSON unter folgenden Attributen zu finden. (Siehe weiter unten ein Auszug des JSON)
- 'space': '/rest/api/space/FOO'},
- 'displayUrl': '/spaces/FOO'},
+## 🔧 Implementierung
 
-In der Ergebnisliste soll dann FOO als Space angezeigt werden
+### Code-Änderungen (v1.3.0-dev.1)
+- [x] Version auf v1.3.0-dev.1 gesetzt
+- [x] Import json hinzugefügt
+- [x] ACTION_OPEN und ACTION_COPY_URL Konstanten hinzugefügt
+- [x] set_actions() in on_start() implementiert
+- [x] data_bag von issue["key"] zu json.dumps(issue) geändert
+- [x] on_execute() mit Action-Handling erweitert
 
-Das Aktualisierungsdatum ist in folgenden Attribut zu finden  (Siehe weiter unte ein Auszug des JSON)
- 'lastModified': '2026-01-21T14:27:02.000Z',
+### Status
+✅ **Implementierung abgeschlossen**
 
-Das datum soll in der Ergebnisliste als ISO-Date angezeigt werden,  hier im Beipsiel 2026-01-21
+Commit: `9843d8e` - feat: add multi-action support to JQE plugin
 
-Im Endergebnis sieht ein Eintrag in Keypirinha folgendermassen aus
+---
 
-	Titel 
-	Space | Type | Actualisierungsdatum
+## 🧪 Testing
 
-Beispiel:
+**Bereit für manuelle Tests in Keypirinha:**
 
-	Foobar is nice
-	Space: FOO | Type: page | LastMod: 2026-01-21
+1. **Standard-Action (Enter)**
+   - [ ] JQL-Query ausführen
+   - [ ] Ticket auswählen
+   - [ ] Enter drücken
+   - [ ] Erwartung: Ticket öffnet im Browser
 
-### Beispielauszug des Ergebnis JSON der API-Antwort
-[{
-'content': {
-'id': '690258032',
- 'type': 'page',
- 'status': 'current',
- 'title': 'Roadmap Consent-Fachkonzepte 2026 / 2027',
- 'title': 'Foobar is nic',
- 'childTypes': {
-},
- 'macroRenderedOutput': {
-},
- 'restrictions': {
-},
- '_expandable': {
-'container': '',
- 'metadata': '',
- 'extensions': '',
- 'operations': '',
- 'children': '',
- 'history': '/rest/api/content/690258032/history',
- 'ancestors': '',
- 'body': '',
- 'version': '',
- 'descendants': '',
- 'space': '/rest/api/space/FOO'},
- '_links': {
-'webui': '/spaces/FOO/pages/690258032/Foobar+is+nice',
- 'self': 'https://foo.atlassian.net/wiki/rest/api/content/690258032',
- 'tinyui': '/x/cIAkKQ'}},
- 'title': 'Foobar is nice',
- 'excerpt': 'Foobar, wie man es in der Entwicklung einsetzt und woher es kommt. Kurzer geschichtlicher Einblick und Fun-facts',
- 'url': '/spaces/FOO/pages/690258032/Foobar+is+nice',
- 'resultGlobalContainer': {
-'title': 'Dev und Mehr',
- 'displayUrl': '/spaces/FOO'},
- 'breadcrumbs': [],
- 'entityType': 'content',
- 'iconCssClass': 'aui-icon content-type-page',
- 'lastModified': '2026-01-21T14:27:02.000Z',
- 'friendlyLastModified': 'gestern um 15:27',
- 'score': 0.0}, 
- {
-'content': {
-'id': '690257967',
- 'type': 'page',
- 'status': 'current',
- ...
- }]
- 
+2. **Action-Menü (Tab)**
+   - [ ] Ticket auswählen
+   - [ ] Tab drücken
+   - [ ] Erwartung: 2 Actions erscheinen
 
+3. **Copy URL Action**
+   - [ ] Im Action-Menü "Copy URL" auswählen
+   - [ ] Enter drücken
+   - [ ] Erwartung: URL in Zwischenablage
+
+---
+
+## 📝 Nächste Schritte
+
+Nach erfolgreichem Testing:
+- [ ] Version auf v1.3.0 setzen (Final - ohne -dev)
+- [ ] Dokumentation aktualisieren
+- [ ] Commit und Push
+- [ ] PR erstellen
+
+---
+
+**Status:** 🟡 Ready for Testing

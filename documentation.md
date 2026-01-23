@@ -1,6 +1,6 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
-**Jira Plugin Version:** 1.2.0
+**Jira Plugin Version:** 1.3.0
 **Confluence Plugin Version:** 1.1.0
 
 ---
@@ -27,7 +27,8 @@ KeyPi ist eine Sammlung von Keypirinha-Plugins für Atlassian Cloud-Produkte.
 - JQL-Queries aus Keypirinha ausführen
 - Ergebnisse als filterbare Liste
 - JQL Shortcuts für häufige Queries
-- Tickets im Browser öffnen
+- **Multi-Action Support**: Tab-Menü mit mehreren Aktionen
+- Tickets im Browser öffnen oder URLs kopieren
 
 ---
 
@@ -82,6 +83,29 @@ Nach Ausführung der JQL-Query kannst du die Ergebnisse filtern:
 - Keine zusätzlichen API-Calls beim Filtern
 - Schnelles Durchsuchen großer Ergebnislisten
 - Filter durchsucht: Ticket-ID, Summary, Status
+
+### Multi-Action Support
+
+Jeder Ticket-Eintrag bietet mehrere Aktionen:
+
+**Standardaktion (Enter):**
+- Ticket im Browser öffnen
+
+**Action-Menü (Tab drücken):**
+1. **Open ticket**: Ticket im Browser öffnen (Standard)
+2. **Copy URL**: Ticket-URL in Zwischenablage kopieren
+
+**Workflow:**
+1. Query ausführen → Ergebnisse erscheinen
+2. Ticket auswählen
+3. **Tab** drücken → Action-Menü öffnet sich
+4. Action auswählen (mit Pfeiltasten oder weiteres Tab)
+5. **Enter** drücken → Action wird ausgeführt
+
+**Vorteile:**
+- 🚀 Schneller Zugriff auf häufige Aktionen
+- 📋 URLs kopieren ohne Browser zu öffnen
+- 🔄 Mehrere URLs nacheinander kopieren (kein Modus-Reset)
 
 ### JQL Shortcuts
 
@@ -170,6 +194,13 @@ Keypirinha-Konsole: `F2`
 ---
 
 ## 🔄 Changelog
+
+### Version 1.3.0 (2026-01-23)
+- **Neu:** Multi-Action Support (Tab-Menü mit 2 Aktionen)
+  - Open ticket (Standard-Aktion mit Enter)
+  - Copy URL (Kopiert URL in Zwischenablage)
+- **UX:** Konsistente Action-Muster wie andere Keypirinha-Plugins
+- **Feature:** Copy URL resettet Modus nicht (mehrere URLs kopieren möglich)
 
 ### Version 1.2.0 (2025-12-22)
 - **Neu:** JQL Shortcuts für häufige Queries
@@ -367,4 +398,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.2.0 | CQE v1.1.0
+**Ende** | JQE v1.3.0 | CQE v1.1.0
