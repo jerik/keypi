@@ -1,7 +1,7 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
 **Jira Plugin Version:** 1.3.0
-**Confluence Plugin Version:** 1.1.0
+**Confluence Plugin Version:** 1.2.0
 
 ---
 
@@ -319,6 +319,39 @@ Jeder Sucheintrag bietet mehrere Aktionen:
 - 📋 URLs kopieren ohne Browser zu öffnen
 - ✏️ Direkt in Bearbeiten-Modus springen
 
+### CQL Shortcuts (Neu in v1.2.0)
+
+Spare Zeit mit wiederverwendbaren Shortcuts für häufige Queries!
+
+**Shortcuts definieren** in `keypi_cqe.ini`:
+
+```ini
+[cqe_shortcuts]
+myco = title ~ konzept and creator = currentUser()
+mytodo = title ~ todo and creator = currentUser()
+recent = lastModified >= now("-7d") ORDER BY lastModified DESC
+```
+
+**Shortcuts verwenden:**
+
+1. **Alle Shortcuts anzeigen**:
+   - Tippe: `cqe` → `#` → Liste aller Shortcuts erscheint
+
+2. **Shortcut filtern**:
+   - Tippe: `cqe` → `#myco` → Zeigt Shortcuts mit "myco" im Namen
+
+3. **Shortcut ausführen**:
+   - Wähle Shortcut → `Enter` → Query wird ausgeführt
+
+4. **Config bearbeiten**:
+   - Tippe: `cqe` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+**Vorteile:**
+- 🚀 Spare Zeit bei häufigen Queries
+- 🎯 Keine komplexe CQL-Syntax merken
+- ✏️ Einfach zu editieren und teilen
+- 🔄 Shortcuts sind case-insensitive (#Myco = #myco)
+
 ### Konfiguration
 
 Das Keyword ist konfigurierbar in `keypi_cqe.ini`:
@@ -374,6 +407,14 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog (CQE)
 
+### Version 1.2.0 (2026-01-26)
+- **Neu:** CQL Shortcuts für häufige Queries
+- **Neu:** # Prefix für Shortcut-Zugriff (#myco, #mytodo, etc.)
+- **Neu:** #edit öffnet Config-Datei zum Bearbeiten
+- **Neu:** Liste aller Shortcuts mit # anzeigen
+- **Feature:** Case-insensitive Shortcut-Matching
+- **UX:** Direkte Ausführung ohne sichtbare CQL-Expansion
+
 ### Version 1.1.0 (2026-01-23)
 - **Neu:** Multi-Action Support (Tab-Menü mit 3 Aktionen)
   - Open page (Standard-Aktion mit Enter)
@@ -398,4 +439,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.3.0 | CQE v1.1.0
+**Ende** | JQE v1.3.0 | CQE v1.2.0
