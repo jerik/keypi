@@ -28,6 +28,7 @@ Query Confluence Cloud using CQL (Confluence Query Language) directly from Keypi
 **Key Features:**
 - ⚡ Execute CQL queries instantly
 - 🔍 Two-phase workflow: Query → Filter results locally
+- 💾 CQL Shortcuts for frequently used queries
 - 🎨 Configurable keyword (default: `cqe`)
 - 🎯 Multi-Action Support: Open, Copy URL, Edit page (Tab menu)
 - 📄 Display: Page title, Space, Type, Last Modified date
@@ -165,6 +166,26 @@ filter = 12345
 6. **Select page**:
    - **Press Enter** to open in browser
    - **Press Tab** to see action menu (Open, Copy URL, Edit page)
+
+#### CQL Shortcuts (New in v1.2.0)
+
+Save time with reusable shortcuts for frequent queries!
+
+**Using shortcuts:**
+```
+cqe → #           # Show all shortcuts
+cqe → #myco       # Filter shortcuts by name
+cqe → #myco → Enter # Execute the CQL query
+cqe → #edit       # Open config file for editing
+```
+
+**Define shortcuts in config:**
+```ini
+[cqe_shortcuts]
+myco = title ~ konzept and creator = currentUser()
+mytodo = title ~ todo and creator = currentUser()
+recent = lastModified >= now("-7d") ORDER BY lastModified DESC
+```
 
 #### Multi-Action Menu (New in v1.1.0)
 
@@ -307,6 +328,13 @@ critical = priority = Highest AND status != "Done"
 - ✨ Display tickets with key info
 - ✨ Open tickets in browser
 
+### Confluence Query Explorer v1.2.0 (2026-01-26)
+- ✨ CQL Shortcuts for frequently used queries
+- ✨ # prefix for shortcut access
+- ✨ #edit command to open config file
+- ✨ List all shortcuts with #
+- 🎨 Case-insensitive shortcut matching
+
 ### Confluence Query Explorer v1.1.0 (2026-01-23)
 - ✨ Multi-Action Support (Tab menu)
   - Open page (default)
@@ -335,7 +363,6 @@ See [BACKLOG.md](BACKLOG.md) for planned features and ideas:
 - Multi-instance support
 - Status indicators with colors/icons
 - Ticket actions (status changes, comments)
-- CQL shortcuts (similar to JQL shortcuts)
 
 ---
 
