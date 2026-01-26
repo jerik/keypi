@@ -1,6 +1,6 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
-**Jira Plugin Version:** 1.3.0
+**Jira Plugin Version:** 1.4.0
 **Confluence Plugin Version:** 1.2.0
 
 ---
@@ -140,6 +140,35 @@ mytask = assignee = currentUser() AND status = "Open"
 - ✏️ Einfach zu editieren und teilen
 - 🔄 Shortcuts sind case-insensitive (#Me = #me)
 
+### Query History (Neu in v1.4.0)
+
+Greife schnell auf deine zuletzt ausgeführten Queries zu!
+
+**History verwenden:**
+
+1. **History anzeigen**:
+   - Tippe: `jqe` → `#history` → Liste der letzten Queries erscheint
+
+2. **Query ausführen**:
+   - Wähle Query aus History → `Enter` → Query wird ausgeführt
+
+3. **History löschen**:
+   - Tippe: `jqe` → `#history clear` → `Enter` → Alle Einträge gelöscht
+
+**Konfiguration** in `keypi_jqe.ini`:
+
+```ini
+[main]
+# Maximale Anzahl gespeicherter History-Einträge (Standard: 30)
+history_max_entries = 30
+```
+
+**Vorteile:**
+- 📜 Zuletzt verwendete Queries schnell wiederfinden
+- 🔄 Duplikate werden automatisch nach oben verschoben
+- 💾 Persistent über Keypirinha-Neustarts
+- ⚙️ Konfigurierbare Anzahl der Einträge
+
 ### Konfiguration
 
 Das Keyword ist konfigurierbar in `keypi_jqe.ini`:
@@ -194,6 +223,14 @@ Keypirinha-Konsole: `F2`
 ---
 
 ## 🔄 Changelog
+
+### Version 1.4.0 (2026-01-26)
+- **Neu:** Query History - Zuletzt ausgeführte Queries mit #history abrufen
+- **Neu:** #history clear zum Löschen der kompletten History
+- **Feature:** Persistente History-Datei (überlebt Neustarts)
+- **Feature:** Konfigurierbare Anzahl History-Einträge (default: 30)
+- **Feature:** Duplikate werden automatisch nach oben verschoben
+- **Test:** 21 Unit-Tests für History-Funktionalität
 
 ### Version 1.3.0 (2026-01-23)
 - **Neu:** Multi-Action Support (Tab-Menü mit 2 Aktionen)
@@ -439,4 +476,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.3.0 | CQE v1.2.0
+**Ende** | JQE v1.4.0 | CQE v1.2.0

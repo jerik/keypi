@@ -18,6 +18,7 @@ Query Jira Cloud using JQL (Jira Query Language) directly from Keypirinha.
 - ⚡ Execute JQL queries instantly
 - 🔍 Two-phase workflow: Query → Filter results locally
 - 💾 JQL Shortcuts for frequently used queries
+- 📜 Query History - recall recent queries with #history
 - 🎨 Configurable keyword (default: `jqe`)
 - 🌐 Open tickets in browser
 - 📊 Display: Ticket ID, Status, Summary, Priority, Creator, Assignee
@@ -87,6 +88,9 @@ atlassian_api_key = your-api-token-here
 # Keyword to trigger the plugin (default: jqe)
 keyword = jqe
 
+# Maximum history entries (default: 30)
+history_max_entries = 30
+
 # JQL Shortcuts - Quick access to frequently used queries
 [jql_shortcuts]
 me = assignee = currentUser()
@@ -141,6 +145,22 @@ jqe → #me         # Filter shortcuts by name
 jqe → #me → Enter # Execute "assignee = currentUser()"
 jqe → #edit       # Open config file for editing
 ```
+
+#### Query History (New in v1.4.0)
+
+Access your recently executed queries with `#history`!
+
+**Using history:**
+```
+jqe → #history       # Show recent queries
+jqe → #history clear # Clear all history
+```
+
+**Features:**
+- Automatically saves executed queries
+- Configurable max entries (default: 30)
+- Duplicates move to top (no duplicates in list)
+- Persistent across Keypirinha restarts
 
 **Example queries:**
 ```jql
@@ -309,6 +329,14 @@ critical = priority = Highest AND status != "Done"
 
 ## 📝 Changelog
 
+### Jira Query Explorer v1.4.0 (2026-01-26)
+- ✨ Query History - recall recent queries with #history
+- ✨ #history clear to delete all history
+- 💾 Persistent history across restarts (JSON file)
+- ⚙️ Configurable max history entries (default: 30)
+- 🔄 Duplicate queries move to top
+- ✅ 21 unit tests for history functionality
+
 ### Jira Query Explorer v1.2.0 (2025-12-22)
 - ✨ JQL Shortcuts for frequently used queries
 - ✨ # prefix for shortcut access
@@ -357,12 +385,12 @@ critical = priority = Highest AND status != "Done"
 ## 🛣️ Roadmap
 
 See [BACKLOG.md](BACKLOG.md) for planned features and ideas:
-- Query history
 - Pagination support (>50 results)
 - Custom field display
 - Multi-instance support
 - Status indicators with colors/icons
 - Ticket actions (status changes, comments)
+- CQE Query History
 
 ---
 

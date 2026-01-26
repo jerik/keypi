@@ -477,6 +477,7 @@ Phase 2: Filter Mode
 ---
 
 **Version History:**
+- **2026-01-26**: JQE v1.4.0 update (Query History - JSON file storage, persistent state)
 - **2026-01-26**: CQE v1.2.0 update (CQL Shortcuts - same pattern as JQL Shortcuts)
 - **2026-01-22**: CQE v1.1.0 update (Multi-actions, URL transformations, lastModified field, unit tests)
 - **2025-12-22**: JQE v1.2.0 update (JQL Shortcuts - INI handling, prefix detection, file paths)
