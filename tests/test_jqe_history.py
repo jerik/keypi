@@ -180,6 +180,100 @@ class TestHistoryDuplicateHandling(unittest.TestCase):
         self.assertEqual(result[0]["query"], "assignee = currentUser()")
 
 
+class TestHistoryMultipleAdds(unittest.TestCase):
+    """Test adding multiple queries to history in sequence"""
+
+    def setUp(self):
+        """Create temporary directory for test files"""
+        self.temp_dir = tempfile.mkdtemp()
+        self.history_file = os.path.join(self.temp_dir, "test_history.json")
+
+    def tearDown(self):
+        """Clean up temporary files"""
+        if os.path.exists(self.history_file):
+            os.remove(self.history_file)
+        os.rmdir(self.temp_dir)
+
+    def _save_history(self, queries, path):
+        """Save history to file"""
+        data = {"version": 1, "queries": queries}
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def _load_history(self, path):
+        """Load history from file"""
+        if not os.path.exists(path):
+            return []
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict) or "queries" not in data:
+                return []
+            return data.get("queries", [])
+        except Exception:
+            return []
+
+    def _add_to_history(self, new_query, max_entries=30):
+        """Add query to history (full simulation with file I/O)"""
+        if not new_query or not new_query.strip():
+            return
+
+        new_query = new_query.strip()
+        queries = self._load_history(self.history_file)
+
+        # Remove duplicate if exists (case-insensitive)
+        query_lower = new_query.lower()
+        queries = [q for q in queries if q.get("query", "").lower() != query_lower]
+
+        # Add new entry at beginning
+        new_entry = {"query": new_query, "last_used": datetime.now().isoformat()}
+        queries.insert(0, new_entry)
+
+        # Trim to max entries
+        queries = queries[:max_entries]
+
+        self._save_history(queries, self.history_file)
+
+    def test_multiple_adds_preserve_all(self):
+        """Test that adding multiple queries preserves all of them"""
+        # Add 5 different queries
+        self._add_to_history("query 1")
+        self._add_to_history("query 2")
+        self._add_to_history("query 3")
+        self._add_to_history("query 4")
+        self._add_to_history("query 5")
+
+        # Load and verify all are present
+        result = self._load_history(self.history_file)
+        self.assertEqual(len(result), 5)
+
+        # Newest should be first
+        self.assertEqual(result[0]["query"], "query 5")
+        self.assertEqual(result[4]["query"], "query 1")
+
+    def test_multiple_adds_with_duplicates(self):
+        """Test that adding duplicates moves them to top without duplicating"""
+        self._add_to_history("query A")
+        self._add_to_history("query B")
+        self._add_to_history("query C")
+        self._add_to_history("query A")  # Duplicate
+
+        result = self._load_history(self.history_file)
+        self.assertEqual(len(result), 3)  # No duplicates
+        self.assertEqual(result[0]["query"], "query A")  # Moved to top
+        self.assertEqual(result[1]["query"], "query C")
+        self.assertEqual(result[2]["query"], "query B")
+
+    def test_sequential_adds_create_file_if_not_exists(self):
+        """Test that first add creates the file"""
+        self.assertFalse(os.path.exists(self.history_file))
+        self._add_to_history("first query")
+        self.assertTrue(os.path.exists(self.history_file))
+
+        result = self._load_history(self.history_file)
+        self.assertEqual(len(result), 1)
+
+
 class TestHistoryFileOperations(unittest.TestCase):
     """Test history file read/write operations"""
 

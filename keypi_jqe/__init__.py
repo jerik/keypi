@@ -24,7 +24,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.1"
+    VERSION = "1.4.0-dev.2"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -564,29 +564,18 @@ class JiraQueryExplorer(kp.Plugin):
             self._clear_history()
             self.info("History cleared via Enter")
 
-        # Handle history entry selection - Show JQL for execution
+        # Handle history entry selection - Execute query directly
+        # NOTE: set_suggestions() does NOT work in on_execute(), so we must
+        # execute the query directly here
         elif (
             item.category() == self.ITEMCAT_HISTORY and item.target() == "history_entry"
         ):
             jql_query = item.data_bag()
-            self.info(f"History entry selected via Enter: {jql_query[:50]}...")
-
-            # Show JQL as execute item (same as manual JQL input)
-            self.set_suggestions(
-                [
-                    self.create_item(
-                        category=self.ITEMCAT_QUERY,
-                        label=f"{self._keyword}: {jql_query}",
-                        short_desc="Press Tab to execute query, or Esc to go back",
-                        target="execute_jql",
-                        args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.KEEPALL,
-                        data_bag=jql_query,
-                    )
-                ],
-                kp.Match.ANY,
-                kp.Sort.NONE,
+            self.info(
+                f"History entry selected via Enter, executing: {jql_query[:50]}..."
             )
+            # Execute query directly - this will show results
+            self._execute_jql_query(jql_query)
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions
@@ -958,8 +947,10 @@ class JiraQueryExplorer(kp.Plugin):
             List of history entries [{"query": "...", "last_used": "..."}]
         """
         history_path = self._get_history_file_path()
+        self.dbg(f"[_load_history] Loading from: {history_path}")
 
         if not os.path.exists(history_path):
+            self.dbg("[_load_history] File does not exist, returning empty list")
             return []
 
         try:
@@ -968,16 +959,18 @@ class JiraQueryExplorer(kp.Plugin):
 
             # Validate structure
             if not isinstance(data, dict) or "queries" not in data:
-                self.warn("Invalid history file structure, resetting")
+                self.warn("[_load_history] Invalid structure, resetting")
                 return []
 
-            return data.get("queries", [])
+            queries = data.get("queries", [])
+            self.dbg(f"[_load_history] Loaded {len(queries)} entries")
+            return queries
 
         except json.JSONDecodeError as e:
-            self.warn(f"Corrupted history file, resetting: {e}")
+            self.warn(f"[_load_history] Corrupted JSON, resetting: {e}")
             return []
         except Exception as e:
-            self.warn(f"Error loading history: {e}")
+            self.warn(f"[_load_history] Error: {e}")
             return []
 
     def _save_history(self, queries):
@@ -988,6 +981,7 @@ class JiraQueryExplorer(kp.Plugin):
             queries: List of history entries [{"query": "...", "last_used": "..."}]
         """
         history_path = self._get_history_file_path()
+        self.dbg(f"[_save_history] Saving {len(queries)} entries to: {history_path}")
 
         data = {"version": self.HISTORY_VERSION, "queries": queries}
 
@@ -998,10 +992,10 @@ class JiraQueryExplorer(kp.Plugin):
             with open(history_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
 
-            self.dbg(f"Saved {len(queries)} history entries")
+            self.dbg("[_save_history] Saved successfully")
 
         except Exception as e:
-            self.err(f"Error saving history: {e}")
+            self.err(f"[_save_history] Error: {e}")
 
     def _add_to_history(self, query):
         """
@@ -1011,14 +1005,22 @@ class JiraQueryExplorer(kp.Plugin):
             query: JQL query string
         """
         if not query or not query.strip():
+            self.dbg("[_add_to_history] Empty query, skipping")
             return
 
         query = query.strip()
+        self.dbg(f"[_add_to_history] Adding: {query[:50]}...")
+
         queries = self._load_history()
+        original_count = len(queries)
 
         # Remove duplicate if exists (case-insensitive comparison)
         query_lower = query.lower()
         queries = [q for q in queries if q.get("query", "").lower() != query_lower]
+        removed_duplicate = len(queries) < original_count
+
+        if removed_duplicate:
+            self.dbg("[_add_to_history] Removed duplicate entry")
 
         # Add new entry at the beginning
         new_entry = {"query": query, "last_used": datetime.now().isoformat()}
@@ -1028,7 +1030,7 @@ class JiraQueryExplorer(kp.Plugin):
         queries = queries[: self._history_max_entries]
 
         self._save_history(queries)
-        self.info(f"Added to history: {query[:50]}...")
+        self.info(f"Added to history ({len(queries)} total): {query[:50]}...")
 
     def _clear_history(self):
         """Clear all history entries"""
