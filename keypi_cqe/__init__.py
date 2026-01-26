@@ -29,12 +29,13 @@ class ConfluenceQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.1.0"
+    VERSION = "1.2.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
     ITEMCAT_FILTER = kp.ItemCategory.USER_BASE + 3
+    ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 4
 
     # Modes
     MODE_CQL = "cql"
@@ -59,6 +60,9 @@ class ConfluenceQueryExplorer(kp.Plugin):
         self._current_cql = ""
         self._cached_results = []
         self._filter_text = ""
+
+        # CQL Shortcuts
+        self._cql_shortcuts = {}  # {shortcut_name: cql_query}
 
     def on_start(self):
         """Called when plugin is loaded"""
@@ -160,6 +164,54 @@ class ConfluenceQueryExplorer(kp.Plugin):
             # and we'll be in FILTER mode with cached results
             return
 
+        # Check if user selected a shortcut (pressed Enter/Tab)
+        # Show the expanded CQL as an "execute_cql" item (like manual CQL input)
+        if (
+            self._current_mode == self.MODE_CQL
+            and len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target().startswith("shortcut_")
+        ):
+            cql_query = items_chain[-1].data_bag()
+            shortcut_name = items_chain[-1].target().replace("shortcut_", "")
+            self.info(
+                f"Shortcut #{shortcut_name} selected, showing CQL: {cql_query[:50]}..."
+            )
+
+            # Show CQL as execute item (same as manual CQL input)
+            # KEEPALL keeps Keypirinha open for Tab execution
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {cql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_cql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=cql_query,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
+            return
+
+        # Check if user pressed Tab/Enter on #edit
+        # Open config file and reset to allow new query
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "edit_config"
+        ):
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_cqe.ini")
+            config_path = os.path.abspath(config_path)
+            self.info(f"Opening config file: {config_path}")
+            kpu.shell_execute(config_path)
+            self._reset_to_cql_mode()
+            return
+
         self.dbg(f"MODE={self._current_mode}, CQL='{self._current_cql}'")
 
         # State machine: Handle CQL mode vs Filter mode
@@ -171,14 +223,17 @@ class ConfluenceQueryExplorer(kp.Plugin):
                     [
                         self.create_item(
                             category=kp.ItemCategory.KEYWORD,
-                            label="Enter CQL query...",
-                            short_desc="Example: type=page AND space=MYSPACE",
+                            label="Enter CQL query or #shortcut...",
+                            short_desc="Example: type=page AND space=MYSPACE | Use # for shortcuts",
                             target="hint",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.IGNORE,
                         )
                     ]
                 )
+            elif user_input.strip().startswith("#"):
+                # Shortcut mode - show available shortcuts
+                self._handle_shortcut_input(user_input.strip())
             else:
                 # User is typing CQL - show "Press Enter" hint (NO API call)
                 self.dbg(f"CQL_MODE: typing '{user_input.strip()[:30]}...'")
@@ -364,6 +419,49 @@ class ConfluenceQueryExplorer(kp.Plugin):
             self.info(f"Enter pressed - executing: {cql_query[:50]}...")
             self._execute_cql_query(cql_query)
 
+        # Handle shortcut selection - Show CQL for review (not execute directly)
+        # This allows user to see the query before executing with Tab
+        elif item.category() == self.ITEMCAT_SHORTCUT and item.target().startswith(
+            "shortcut_"
+        ):
+            cql_query = item.data_bag()
+            shortcut_name = item.target().replace("shortcut_", "")
+            self.info(
+                f"Shortcut #{shortcut_name} selected via Enter, showing CQL: {cql_query[:50]}..."
+            )
+
+            # Show CQL as execute item (same as manual CQL input)
+            # KEEPALL keeps Keypirinha open for Tab execution
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {cql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_cql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=cql_query,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
+
+        # Handle #edit - Open config file
+        elif (
+            item.category() == self.ITEMCAT_SHORTCUT and item.target() == "edit_config"
+        ):
+            # Get config file path - use relative path from plugin directory
+            # Plugin is in: Packages/keypi_cqe/
+            # Config is in:  User/keypi_cqe.ini
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_cqe.ini")
+            config_path = os.path.abspath(config_path)
+            self.info(f"Opening config file: {config_path}")
+            # Open config file with default editor
+            kpu.shell_execute(config_path)
+
         # Handle RESULT items with actions
         elif item.category() == self.ITEMCAT_RESULT:
             item_data = json.loads(item.data_bag())
@@ -440,6 +538,18 @@ class ConfluenceQueryExplorer(kp.Plugin):
             self.on_catalog()
             self.info(f"Keyword changed from '{old_keyword}' to '{self._keyword}'")
 
+        # Load CQL shortcuts
+        self._cql_shortcuts = {}
+        if settings.has_section("cqe_shortcuts"):
+            for key in settings.keys("cqe_shortcuts"):
+                cql_query = settings.get_stripped(
+                    key, section="cqe_shortcuts", fallback=""
+                )
+                if cql_query:
+                    # Store shortcuts in lowercase for case-insensitive matching
+                    self._cql_shortcuts[key.lower()] = cql_query
+            self.info(f"Loaded {len(self._cql_shortcuts)} CQL shortcuts")
+
         # Initialize Confluence client if credentials are available
         if self._is_configured():
             try:
@@ -514,3 +624,126 @@ class ConfluenceQueryExplorer(kp.Plugin):
             # Fallback: use page_url as-is
             self.warn(f"Could not parse URL for edit mode: {page_url}")
             return page_url
+
+    def _handle_shortcut_input(self, user_input):
+        """
+        Handle shortcut input starting with #
+
+        Args:
+            user_input: User input string starting with #
+        """
+        shortcut_name = user_input[1:].lower()  # Remove # and lowercase
+
+        suggestions = []
+
+        # Show all shortcuts if only # is entered
+        if shortcut_name == "":
+            # Special shortcut: #edit
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#edit",
+                    short_desc="Open shortcuts configuration file",
+                    target="edit_config",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                )
+            )
+            # Show all CQL shortcuts
+            for name, cql in sorted(self._cql_shortcuts.items()):
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_SHORTCUT,
+                        label=f"#{name}",
+                        short_desc=cql,
+                        target=f"shortcut_{name}",  # Unique target per shortcut
+                        args_hint=kp.ItemArgsHint.ACCEPTED,  # Allow Enter to add to chain
+                        hit_hint=kp.ItemHitHint.IGNORE,  # Reset hit hint
+                        data_bag=cql,  # Store CQL for execution
+                    )
+                )
+        else:
+            # User typed something after # (e.g., "#me", "#m", "#o")
+            # Check for EXACT match first - if found, show CQL execute item directly
+            exact_match_cql = None
+            if shortcut_name in self._cql_shortcuts:
+                exact_match_cql = self._cql_shortcuts[shortcut_name]
+                self.info(f"EXACT MATCH: #{shortcut_name} -> {exact_match_cql[:50]}...")
+            elif shortcut_name == "edit":
+                # Special case: #edit exact match
+                self.info("EXACT MATCH: #edit -> open config")
+                # Open config and return
+                plugin_dir = os.path.dirname(__file__)
+                config_path = os.path.join(
+                    plugin_dir, "..", "..", "User", "keypi_cqe.ini"
+                )
+                config_path = os.path.abspath(config_path)
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_SHORTCUT,
+                        label="#edit",
+                        short_desc="Press Enter to open config file",
+                        target="edit_config",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                    )
+                )
+
+            # If exact match found, show CQL execute item (like manual CQL input)
+            if exact_match_cql:
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {exact_match_cql}",
+                        short_desc="Press Enter to execute query",
+                        target="execute_cql",
+                        args_hint=kp.ItemArgsHint.REQUIRED,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=exact_match_cql,
+                    )
+                )
+            else:
+                # No exact match - show prefix matches (shortcuts for further typing)
+                # Check if "edit" matches as prefix
+                if "edit".startswith(shortcut_name):
+                    suggestions.append(
+                        self.create_item(
+                            category=self.ITEMCAT_SHORTCUT,
+                            label="#edit",
+                            short_desc="Open shortcuts configuration file",
+                            target="edit_config",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
+                        )
+                    )
+
+                # Check CQL shortcuts for prefix matches
+                for name, cql in sorted(self._cql_shortcuts.items()):
+                    if name.startswith(shortcut_name):
+                        suggestions.append(
+                            self.create_item(
+                                category=self.ITEMCAT_SHORTCUT,
+                                label=f"#{name}",
+                                short_desc=cql,
+                                target=f"shortcut_{name}",
+                                args_hint=kp.ItemArgsHint.ACCEPTED,
+                                hit_hint=kp.ItemHitHint.IGNORE,
+                                data_bag=cql,
+                            )
+                        )
+
+        if not suggestions:
+            # No shortcuts found
+            self.warn(f"No shortcuts matched: #{shortcut_name}")
+            suggestions.append(
+                self.create_item(
+                    category=kp.ItemCategory.KEYWORD,
+                    label=f"{self._keyword}: #{shortcut_name}",
+                    short_desc="No shortcuts found. Define shortcuts in keypi_cqe.ini",
+                    target="no_shortcuts",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+
+        self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
