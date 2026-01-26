@@ -11,7 +11,6 @@ Wenn ich nur '#' eingebe soll die liste der cqe_shortcuts angezeigt werden. Anal
 [cqe|# ] |
    #myco 
    title ~ konzept and creator = currentUser()
-   ---
    #mytodo 
    title ~ todo and creator = currentUser()
 
