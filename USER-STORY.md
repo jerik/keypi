@@ -1,80 +1,30 @@
-# User Story: JQE Multi-Actions
+# User Story: CQE Shortcuts
+Beschreibung
+Ich benötige cqe shortcuts, damit ich häufig genutze cqe nicht immer neu eintippen muss, sondern diese über einen shortcut aufrufen kann. Die shortcuts sollen in der config datei konfiguriet, die ich dann aufrufen und editieren kann. Vom Verhalten orientiere dich bitte an den jqe shortcuts implementierung
+Für die config-datei wäre ein Vorschlag [cqe_shortcuts] 
+* myco = title ~ konzept and creator = currentUser()
+* mytodo = title ~ todo and creator = currentUser() 
 
-**Plugin:** Jira Query Explorer (JQE)
-**Version:** 1.2.0 → 1.3.0
-**Datum:** 2026-01-23
+In keypirinha möchte ich nach dem keyword 'cqe' die shortcuts aufrufen können. Die jql shortcuts werde mit einem Prefix # aufgerufen. Das würde dann so aussehen [cqe| #myco ] oder [cqe| #mytodo] 
 
----
+Wenn ich nur '#' eingebe soll die liste der cqe_shortcuts angezeigt werden. Analog zu den jqe_shortcuts
+[cqe|# ] |
+   #myco 
+   title ~ konzept and creator = currentUser()
+   ---
+   #mytodo 
+   title ~ todo and creator = currentUser()
 
-## 📋 User Story
+Aus diesen Einträgen kann ich einen auswählen und ausführen.
 
-Als Nutzer möchte ich folgende Verbesserungen im Jira Query Plugin haben:
-- Die Einträge aus der Ergebnisliste sollen mehrere Actions bekommen
-- Neben dem Aufrufen der Webseite möchte ich die URL kopieren können, um die Ergebnisse besser in meinem Workflow nutzen zu können
+Optional: wenn ich als jql_shortcut '#edit' eingebe soll die die configdatei im standard editor aufgerufen werden, damit ich die cqe_shortcuts bearbeiten kann. Analog zu der jqe implementierung
 
----
-
-## ✅ Akzeptanzkriterien
-
-### 1. Multi-Action Support für Ergebnisse
-- [x] Als User möchte ich mehrere Actions zu einem Eintrag haben
-- [x] Wähle ich einen Eintrag aus und drücke **Enter**, wird die URL des Eintrags im Browser aufgerufen (Standard-Action)
-- [x] Wähle ich einen Eintrag aus und drücke **Tab**, werden mir in Keypirinha die möglichen Actions angezeigt
-
-### 2. Verfügbare Actions
-Die möglichen Actions sind:
-- [x] **Open ticket** - Öffnet Jira-Ticket im Browser (Standard-Action bei Enter)
-- [x] **Copy URL** - Kopiert Ticket-URL in die Zwischenablage
-
----
-
-## 🔧 Implementierung
-
-### Code-Änderungen (v1.3.0-dev.1)
-- [x] Version auf v1.3.0-dev.1 gesetzt
-- [x] Import json hinzugefügt
-- [x] ACTION_OPEN und ACTION_COPY_URL Konstanten hinzugefügt
-- [x] set_actions() in on_start() implementiert
-- [x] data_bag von issue["key"] zu json.dumps(issue) geändert
-- [x] on_execute() mit Action-Handling erweitert
-
-### Status
-✅ **Implementierung abgeschlossen**
-
-Commit: `9843d8e` - feat: add multi-action support to JQE plugin
-
----
-
-## 🧪 Testing
-
-**Bereit für manuelle Tests in Keypirinha:**
-
-1. **Standard-Action (Enter)**
-   - [ ] JQL-Query ausführen
-   - [ ] Ticket auswählen
-   - [ ] Enter drücken
-   - [ ] Erwartung: Ticket öffnet im Browser
-
-2. **Action-Menü (Tab)**
-   - [ ] Ticket auswählen
-   - [ ] Tab drücken
-   - [ ] Erwartung: 2 Actions erscheinen
-
-3. **Copy URL Action**
-   - [ ] Im Action-Menü "Copy URL" auswählen
-   - [ ] Enter drücken
-   - [ ] Erwartung: URL in Zwischenablage
-
----
-
-## 📝 Nächste Schritte
-
-Nach erfolgreichem Testing:
-- [ ] Version auf v1.3.0 setzen (Final - ohne -dev)
-- [ ] Dokumentation aktualisieren
-- [ ] Commit und Push
-- [ ] PR erstellen
-
----
-
-**Status:** 🟡 Ready for Testing
+Akzeptanzkriterien
+Als User möchte ich cqe_shortcuts verwalten können, damit ich weiss welche shortcuts ich definiert habe
+Als User möchte ich die definierten shortcuts im plugin aufrufen können. Die shortcuts beginnen mit #, gefolgt von dem shortcut namen, bspw. #myco
+Als User möchte ich die shortscust im cqe mode aufrufen können
+Als User möchte ich dass der hinter dem shortcut hinterlegte cfl query im weiteren Prozess genutzt wird, d.h. die cfl wird ausgeführt und in keypirinha sehe ich die Ergebnisliste wie bisher auch
+Als User möchte ich, dass bei der Eingabe von #, mir alle definierten Shortcuts aufgelistet werden. Aus diesen Shortcuts kann ich einen auswählen.
+Als User möchte ich bei der eingabe von #edit, das die datei mit den shortcuts im standard-editor geöffnet werden, damit ich diese editieren kann.
+Abnahme
+Das Feature ist soweit abgenommen und funktionstüchtig. Akzeptanzkriterium 5, funktioniert nicht 100% aber das ist vertretbar.
