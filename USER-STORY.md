@@ -14,6 +14,7 @@ Als Benutzer möchte ich meine zuletzt ausgeführten JQL-Queries über `#history
 - [ ] History wird persistent gespeichert (überlebt Keypirinha-Neustart)
 - [ ] Anzahl der History-Einträge konfigurierbar (default: 30)
 - [ ] Duplikate: Gleiche Query nur einmal (bei erneutem Aufruf nach oben verschieben)
+- [ ] `#history clear` löscht die komplette History
 
 ---
 
@@ -63,8 +64,9 @@ history_max_entries = 30
 
 | Eingabe | Verhalten |
 |---------|-----------|
-| `jqe #` | Zeigt: #edit, #history, alle Shortcuts |
+| `jqe #` | Zeigt: #edit, #history, #history clear, alle Shortcuts |
 | `jqe #history` | Zeigt History-Liste (neueste zuerst) |
+| `jqe #history clear` | Löscht die komplette History |
 | `jqe #his` | Prefix-Match auf "history" |
 
 ### Workflow
@@ -76,10 +78,10 @@ history_max_entries = 30
 
 ---
 
-## Offene Fragen
+## Entschiedene Fragen
 
-- [ ] Soll `#history clear` die History löschen können?
-- [ ] Soll die History-Datei auch manuell editierbar sein (dokumentieren)?
+- [x] `#history clear` zum Löschen der History → **Ja**
+- [x] History-Datei für manuelle Edits dokumentieren → **Nein**
 
 ---
 
@@ -106,5 +108,6 @@ history_max_entries = 30
 - [ ] History wird auf max_entries begrenzt
 - [ ] History überlebt Keypirinha-Neustart
 - [ ] `#history` zeigt alle Einträge
+- [ ] `#history clear` löscht alle Einträge
 - [ ] Konfiguration `history_max_entries` wird respektiert
 - [ ] Korrupte History-Datei wird graceful behandelt
