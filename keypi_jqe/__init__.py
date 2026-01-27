@@ -24,7 +24,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.4"
+    VERSION = "1.4.0-dev.5"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -279,7 +279,7 @@ class JiraQueryExplorer(kp.Plugin):
             self._current_mode == self.MODE_JQL
             and len(items_chain) > 1
             and items_chain[-1].category() == self.ITEMCAT_HISTORY
-            and items_chain[-1].target() == "history_entry"
+            and items_chain[-1].target().startswith("history_entry_")
         ):
             jql_query = items_chain[-1].data_bag()
             self.info(f"History entry selected, showing JQL: {jql_query[:50]}...")
@@ -567,8 +567,8 @@ class JiraQueryExplorer(kp.Plugin):
         # Handle history entry selection - Show JQL for review (like shortcuts)
         # NOTE: User should Tab on history entry, then Tab again to execute
         # Enter on history entry shows JQL preview (same as shortcuts)
-        elif (
-            item.category() == self.ITEMCAT_HISTORY and item.target() == "history_entry"
+        elif item.category() == self.ITEMCAT_HISTORY and item.target().startswith(
+            "history_entry_"
         ):
             jql_query = item.data_bag()
             self.info(
@@ -820,12 +820,14 @@ class JiraQueryExplorer(kp.Plugin):
                         query = entry.get("query", "")
                         last_used = entry.get("last_used", "")[:10]  # Date only
                         self.dbg(f"[#history] Entry {i}: {query[:30]}...")
+                        # IMPORTANT: Each item needs unique target!
+                        # Keypirinha deduplicates items with same target
                         suggestions.append(
                             self.create_item(
                                 category=self.ITEMCAT_HISTORY,
                                 label=query,
                                 short_desc=f"Last used: {last_used}",
-                                target="history_entry",
+                                target=f"history_entry_{i}",
                                 args_hint=kp.ItemArgsHint.ACCEPTED,
                                 hit_hint=kp.ItemHitHint.IGNORE,
                                 data_bag=query,
