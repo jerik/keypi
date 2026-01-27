@@ -24,7 +24,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.2"
+    VERSION = "1.4.0-dev.4"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -564,18 +564,35 @@ class JiraQueryExplorer(kp.Plugin):
             self._clear_history()
             self.info("History cleared via Enter")
 
-        # Handle history entry selection - Execute query directly
-        # NOTE: set_suggestions() does NOT work in on_execute(), so we must
-        # execute the query directly here
+        # Handle history entry selection - Show JQL for review (like shortcuts)
+        # NOTE: User should Tab on history entry, then Tab again to execute
+        # Enter on history entry shows JQL preview (same as shortcuts)
         elif (
             item.category() == self.ITEMCAT_HISTORY and item.target() == "history_entry"
         ):
             jql_query = item.data_bag()
             self.info(
-                f"History entry selected via Enter, executing: {jql_query[:50]}..."
+                f"History entry selected via Enter, showing JQL: {jql_query[:50]}..."
             )
-            # Execute query directly - this will show results
-            self._execute_jql_query(jql_query)
+
+            # Show JQL as execute item (same as shortcut behavior)
+            # Note: set_suggestions() in on_execute() may not work reliably
+            # Recommend user to use Tab instead of Enter
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {jql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_jql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=jql_query,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions
@@ -797,21 +814,26 @@ class JiraQueryExplorer(kp.Plugin):
                 # Special case: #history exact match - show history entries
                 self.info("EXACT MATCH: #history -> show history")
                 history = self._load_history()
+                self.info(f"[#history] Loaded {len(history)} history entries")
                 if history:
-                    for entry in history:
+                    for i, entry in enumerate(history):
                         query = entry.get("query", "")
                         last_used = entry.get("last_used", "")[:10]  # Date only
+                        self.dbg(f"[#history] Entry {i}: {query[:30]}...")
                         suggestions.append(
                             self.create_item(
                                 category=self.ITEMCAT_HISTORY,
                                 label=query,
                                 short_desc=f"Last used: {last_used}",
                                 target="history_entry",
-                                args_hint=kp.ItemArgsHint.FORBIDDEN,
-                                hit_hint=kp.ItemHitHint.KEEPALL,
+                                args_hint=kp.ItemArgsHint.ACCEPTED,
+                                hit_hint=kp.ItemHitHint.IGNORE,
                                 data_bag=query,
                             )
                         )
+                    self.info(
+                        f"[#history] Added {len(history)} history items to suggestions"
+                    )
                 else:
                     suggestions.append(
                         self.create_item(
@@ -920,6 +942,7 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             )
 
+        self.info(f"[_handle_shortcut_input] Setting {len(suggestions)} suggestions")
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
     # =========================================================================
