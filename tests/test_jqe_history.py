@@ -413,9 +413,10 @@ class TestHistoryInputDetection(unittest.TestCase):
     """Test #history input detection"""
 
     def _is_history_command(self, user_input):
-        """Check if input is a history command"""
+        """Check if input is a history command (including #his alias)"""
         input_lower = user_input.strip().lower()
-        return input_lower == "history" or input_lower == "history clear"
+        # Matches: "history", "his", "history clear"
+        return input_lower in ("history", "his") or input_lower == "history clear"
 
     def _is_history_clear_command(self, user_input):
         """Check if input is history clear command"""
@@ -427,6 +428,13 @@ class TestHistoryInputDetection(unittest.TestCase):
         self.assertTrue(self._is_history_command("HISTORY"))
         self.assertTrue(self._is_history_command("  history  "))
 
+    def test_detect_history_alias(self):
+        """Test detection of #his alias command"""
+        self.assertTrue(self._is_history_command("his"))
+        self.assertTrue(self._is_history_command("HIS"))
+        self.assertTrue(self._is_history_command("  his  "))
+        self.assertTrue(self._is_history_command("His"))
+
     def test_detect_history_clear_command(self):
         """Test detection of #history clear command"""
         self.assertTrue(self._is_history_clear_command("history clear"))
@@ -436,7 +444,8 @@ class TestHistoryInputDetection(unittest.TestCase):
     def test_non_history_commands(self):
         """Test non-history commands are not detected"""
         self.assertFalse(self._is_history_command("edit"))
-        self.assertFalse(self._is_history_command("hist"))
+        self.assertFalse(self._is_history_command("hi"))  # Too short
+        self.assertFalse(self._is_history_command("hiss"))  # Wrong spelling
         self.assertFalse(self._is_history_command("historyclear"))
 
 
