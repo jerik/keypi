@@ -9,6 +9,7 @@ import os
 import sys
 import json
 from datetime import datetime
+from urllib.parse import quote
 
 # Add lib directory to path
 _LIB_DIR = os.path.join(os.path.dirname(__file__), "lib")
@@ -24,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.6"
+    VERSION = "1.4.0-dev.7"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -45,6 +46,8 @@ class JiraQueryExplorer(kp.Plugin):
     # Action names (for set_actions)
     ACTION_OPEN = "open"
     ACTION_COPY_URL = "copy_url"
+    ACTION_COPY_JQL = "copy_jql"
+    ACTION_OPEN_JQL_BROWSER = "open_jql_browser"
 
     def __init__(self):
         super().__init__()
@@ -86,6 +89,23 @@ class JiraQueryExplorer(kp.Plugin):
                     name=self.ACTION_COPY_URL,
                     label="Copy URL",
                     short_desc="Copy ticket URL to clipboard",
+                ),
+            ],
+        )
+
+        # Register actions for history items
+        self.set_actions(
+            self.ITEMCAT_HISTORY,
+            [
+                self.create_action(
+                    name=self.ACTION_COPY_JQL,
+                    label="Copy JQL",
+                    short_desc="Copy JQL query to clipboard (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_OPEN_JQL_BROWSER,
+                    label="Open in browser",
+                    short_desc="Open JQL search in Jira browser",
                 ),
             ],
         )
@@ -564,38 +584,26 @@ class JiraQueryExplorer(kp.Plugin):
             self._clear_history()
             self.info("History cleared via Enter")
 
-        # Handle history entry selection - Execute query and open first result
-        # NOTE: set_suggestions() does NOT work in on_execute()!
-        # So we execute the query and open the first ticket directly.
-        # For full results list, user should use Tab instead of Enter.
+        # Handle history entry selection with actions
+        # Default: Copy JQL to clipboard
+        # Alternative: Open JQL search in browser
         elif item.category() == self.ITEMCAT_HISTORY and item.target().startswith(
             "history_entry_"
         ):
             jql_query = item.data_bag()
-            self.info(f"History entry via Enter - executing: {jql_query[:50]}...")
 
-            try:
-                # Execute query
-                issues = self.jira_client.search_issues(jql_query, max_results=50)
+            if not action or action.name() == self.ACTION_COPY_JQL:
+                # Default action: Copy JQL to clipboard
+                kpu.set_clipboard(jql_query)
+                self.info(f"Copied JQL to clipboard: {jql_query[:50]}...")
 
-                if issues:
-                    # Open first ticket in browser
-                    first_issue = issues[0]
-                    ticket_url = first_issue["url"]
-                    ticket_key = first_issue["key"]
-                    self.info(
-                        f"Opening first of {len(issues)} results: {ticket_key} "
-                        "(use Tab for full results list)"
-                    )
-                    kpu.shell_execute(ticket_url)
-
-                    # Add to history
-                    self._add_to_history(jql_query)
-                else:
-                    self.warn(f"Query returned no results: {jql_query[:50]}...")
-
-            except Exception as e:
-                self.err(f"Error executing history query: {e}")
+            elif action.name() == self.ACTION_OPEN_JQL_BROWSER:
+                # Open JQL search in Jira browser
+                # URL format: <jira_url>/issues/?jql=<encoded_jql>
+                encoded_jql = quote(jql_query, safe="")
+                search_url = f"{self.jira_url}/issues/?jql={encoded_jql}"
+                self.info(f"Opening JQL in browser: {jql_query[:50]}...")
+                kpu.shell_execute(search_url)
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions

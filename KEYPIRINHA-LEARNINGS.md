@@ -476,7 +476,53 @@ Phase 2: Filter Mode
 
 ---
 
+## 🚫 API Limitations (Critical Knowledge)
+
+### set_suggestions() Does NOT Work in on_execute()
+- ⚠️ **Critical**: `set_suggestions()` calls in `on_execute()` are **completely ignored**
+- 📝 **Reason**: Keypirinha closes the Launchbox immediately after `on_execute()` returns
+- 🔧 **Workaround Options**:
+  1. Use **actions** (`set_actions()`) to provide alternative behaviors
+  2. Use **clipboard** to pass data to user
+  3. Open **external URLs** (browser, apps)
+- 💡 **Lesson (JQE v1.4.0)**: Don't try to show new suggestions after Enter - use actions instead!
+
+### No Input Manipulation
+- ⚠️ **Critical**: There is **NO API** to programmatically set or modify user input
+- ⚠️ **Critical**: There is **NO API** to keep the Launchbox open after `on_execute()`
+- 📝 **Architecture**: Plugins react to user input; they cannot initiate input changes
+- 💡 **Lesson (JQE v1.4.0)**: Accept this limitation and design UX around it
+
+### Tab Key Behavior
+- ⚠️ **Pitfall**: Tab behavior depends on `args_hint`:
+  - `ACCEPTED`: Tab adds item to items_chain → triggers `on_suggest()`
+  - `FORBIDDEN`: Tab behaves like Enter → triggers `on_execute()`
+- ⚠️ **Pitfall**: Tab only works reliably at the **start** of item selection
+- 💡 **Lesson (JQE v1.4.0)**: Don't rely on Tab for complex multi-step workflows
+
+### Item Deduplication
+- ⚠️ **Pitfall**: Keypirinha **deduplicates items with the same `target`**
+- 🔧 **Solution**: Use unique targets for each item (e.g., `target=f"history_entry_{i}"`)
+- 💡 **Lesson (JQE v1.4.0)**: Always use unique targets when showing lists of items
+
+---
+
+## 🔗 Jira URL Patterns
+
+### JQL Search URL
+- ✅ **DO**: Use URL format `<jira_url>/issues/?jql=<encoded_jql>` for browser search
+  ```python
+  from urllib.parse import quote
+  encoded_jql = quote(jql_query, safe="")
+  search_url = f"{self.jira_url}/issues/?jql={encoded_jql}"
+  ```
+- ✅ **DO**: URL-encode the JQL query (spaces, special chars)
+- 💡 **Lesson (JQE v1.4.0)**: Direct browser URLs are useful when set_suggestions() doesn't work
+
+---
+
 **Version History:**
+- **2026-01-27**: JQE v1.4.0 update (History actions, API limitations documentation)
 - **2026-01-26**: JQE v1.4.0 update (Query History - JSON file storage, persistent state)
 - **2026-01-26**: CQE v1.2.0 update (CQL Shortcuts - same pattern as JQL Shortcuts)
 - **2026-01-22**: CQE v1.1.0 update (Multi-actions, URL transformations, lastModified field, unit tests)
