@@ -147,10 +147,13 @@ Greife schnell auf deine zuletzt ausgeführten Queries zu!
 **History verwenden:**
 
 1. **History anzeigen**:
-   - Tippe: `jqe` → `#history` → Liste der letzten Queries erscheint
+   - Tippe: `jqe` → `#history` (oder `#his`) → Liste der letzten Queries erscheint
 
-2. **Query ausführen**:
-   - Wähle Query aus History → `Enter` → Query wird ausgeführt
+2. **History-Eintrag verwenden**:
+   - Wähle Query aus History → `Enter` → JQL wird in Clipboard kopiert
+   - **Tab** drücken → Action-Menü:
+     - **Copy JQL**: JQL in Clipboard kopieren (Standard)
+     - **Open in browser**: JQL-Suche im Browser öffnen
 
 3. **History löschen**:
    - Tippe: `jqe` → `#history clear` → `Enter` → Alle Einträge gelöscht
@@ -168,6 +171,7 @@ history_max_entries = 30
 - 🔄 Duplikate werden automatisch nach oben verschoben
 - 💾 Persistent über Keypirinha-Neustarts
 - ⚙️ Konfigurierbare Anzahl der Einträge
+- 📋 JQL kopieren oder direkt im Browser öffnen
 
 ### Konfiguration
 
@@ -224,13 +228,14 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog
 
-### Version 1.4.0 (2026-01-26)
-- **Neu:** Query History - Zuletzt ausgeführte Queries mit #history abrufen
-- **Neu:** #history clear zum Löschen der kompletten History
+### Version 1.4.0 (2026-01-27)
+- **Neu:** Query History - Zuletzt ausgeführte Queries mit `#history` oder `#his` abrufen
+- **Neu:** History Actions: JQL kopieren (Default) oder im Browser öffnen
+- **Neu:** `#history clear` zum Löschen der kompletten History
 - **Feature:** Persistente History-Datei (überlebt Neustarts)
 - **Feature:** Konfigurierbare Anzahl History-Einträge (default: 30)
 - **Feature:** Duplikate werden automatisch nach oben verschoben
-- **Test:** 21 Unit-Tests für History-Funktionalität
+- **Test:** 24 Unit-Tests für History-Funktionalität
 
 ### Version 1.3.0 (2026-01-23)
 - **Neu:** Multi-Action Support (Tab-Menü mit 2 Aktionen)

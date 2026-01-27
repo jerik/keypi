@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.7"
+    VERSION = "1.4.0-dev.8"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -821,7 +821,7 @@ class JiraQueryExplorer(kp.Plugin):
                         hit_hint=kp.ItemHitHint.KEEPALL,
                     )
                 )
-            elif shortcut_name == "history":
+            elif shortcut_name in ("history", "his"):
                 # Special case: #history exact match - show history entries
                 self.info("EXACT MATCH: #history -> show history")
                 history = self._load_history()

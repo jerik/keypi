@@ -148,13 +148,17 @@ jqe → #edit       # Open config file for editing
 
 #### Query History (New in v1.4.0)
 
-Access your recently executed queries with `#history`!
+Access your recently executed queries with `#history` (or `#his`)!
 
 **Using history:**
 ```
-jqe → #history       # Show recent queries
+jqe → #history       # Show recent queries (also: #his)
 jqe → #history clear # Clear all history
 ```
+
+**History entry actions:**
+- **Enter**: Copy JQL to clipboard (default)
+- **Tab** → **Open in browser**: Open JQL search in Jira
 
 **Features:**
 - Automatically saves executed queries
@@ -329,13 +333,14 @@ critical = priority = Highest AND status != "Done"
 
 ## 📝 Changelog
 
-### Jira Query Explorer v1.4.0 (2026-01-26)
-- ✨ Query History - recall recent queries with #history
-- ✨ #history clear to delete all history
+### Jira Query Explorer v1.4.0 (2026-01-27)
+- ✨ Query History - recall recent queries with `#history` (or `#his`)
+- ✨ History Actions: Copy JQL (default) or open in browser
+- ✨ `#history clear` to delete all history
 - 💾 Persistent history across restarts (JSON file)
 - ⚙️ Configurable max history entries (default: 30)
 - 🔄 Duplicate queries move to top
-- ✅ 21 unit tests for history functionality
+- ✅ 24 unit tests for history functionality
 
 ### Jira Query Explorer v1.2.0 (2025-12-22)
 - ✨ JQL Shortcuts for frequently used queries
