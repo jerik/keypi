@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.8"
+    VERSION = "1.4.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
