@@ -24,7 +24,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.4.0-dev.5"
+    VERSION = "1.4.0-dev.6"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -564,35 +564,38 @@ class JiraQueryExplorer(kp.Plugin):
             self._clear_history()
             self.info("History cleared via Enter")
 
-        # Handle history entry selection - Show JQL for review (like shortcuts)
-        # NOTE: User should Tab on history entry, then Tab again to execute
-        # Enter on history entry shows JQL preview (same as shortcuts)
+        # Handle history entry selection - Execute query and open first result
+        # NOTE: set_suggestions() does NOT work in on_execute()!
+        # So we execute the query and open the first ticket directly.
+        # For full results list, user should use Tab instead of Enter.
         elif item.category() == self.ITEMCAT_HISTORY and item.target().startswith(
             "history_entry_"
         ):
             jql_query = item.data_bag()
-            self.info(
-                f"History entry selected via Enter, showing JQL: {jql_query[:50]}..."
-            )
+            self.info(f"History entry via Enter - executing: {jql_query[:50]}...")
 
-            # Show JQL as execute item (same as shortcut behavior)
-            # Note: set_suggestions() in on_execute() may not work reliably
-            # Recommend user to use Tab instead of Enter
-            self.set_suggestions(
-                [
-                    self.create_item(
-                        category=self.ITEMCAT_QUERY,
-                        label=f"{self._keyword}: {jql_query}",
-                        short_desc="Press Tab to execute query, or Esc to go back",
-                        target="execute_jql",
-                        args_hint=kp.ItemArgsHint.FORBIDDEN,
-                        hit_hint=kp.ItemHitHint.KEEPALL,
-                        data_bag=jql_query,
+            try:
+                # Execute query
+                issues = self.jira_client.search_issues(jql_query, max_results=50)
+
+                if issues:
+                    # Open first ticket in browser
+                    first_issue = issues[0]
+                    ticket_url = first_issue["url"]
+                    ticket_key = first_issue["key"]
+                    self.info(
+                        f"Opening first of {len(issues)} results: {ticket_key} "
+                        "(use Tab for full results list)"
                     )
-                ],
-                kp.Match.ANY,
-                kp.Sort.NONE,
-            )
+                    kpu.shell_execute(ticket_url)
+
+                    # Add to history
+                    self._add_to_history(jql_query)
+                else:
+                    self.warn(f"Query returned no results: {jql_query[:50]}...")
+
+            except Exception as e:
+                self.err(f"Error executing history query: {e}")
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions
