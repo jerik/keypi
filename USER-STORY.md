@@ -1,113 +1,55 @@
-# User Story: JQE Query History
+# better jqe history feaure
 
-## Beschreibung
+You are an expert Keypirinha plugin developer (Python) and you know the Keypirinha Plugin API.
 
-Als Benutzer möchte ich meine zuletzt ausgeführten JQL-Queries über `#history` abrufen können, um häufig genutzte Queries schnell wiederzuverwenden ohne sie erneut eintippen zu müssen.
+Goal
+Implement “History → Virtual Query Mode” for my Keypirinha plugin `jqe` (jira-query-plugin). Today, `#history` shows previous JQL queries and pressing Enter on a history entry copies the JQL to clipboard. I want a smoother flow:
 
----
+Desired UX
+1) User opens Keypirinha
+2) types `jqe` and presses Enter (enters plugin / query-mode)
+3) types `#history` and presses Enter (enters history-mode)
+4) history entries (previous JQLs) are shown and filterable
+5) user selects a history entry and presses Enter
+6) instead of copying to clipboard and closing, the plugin switches into a “virtual query results mode”:
+   - the selected history JQL is stored internally
+   - the plugin immediately shows the Jira issues resulting from that JQL as suggestions
+   - user can type to filter those issue results
+   - pressing Enter on an issue executes the default action (same as the normal jql-query-feature)
+Optional: provide a secondary action on history entries that still copies the JQL to clipboard.
 
-## Akzeptanzkriterien
+Hard constraints (Keypirinha API)
+- Do NOT try to programmatically set the launcher input/query text; Keypirinha does not allow that.
+- Do NOT try to “re-enter” the plugin by injecting input. Use internal plugin state instead.
+- Keep Keypirinha’s normal filtering behavior: show suggestions; allow user typing to filter.
 
-- [ ] History über `#history` aufrufbar
-- [ ] Letzte Queries werden in einer Liste angezeigt (neueste zuerst)
-- [ ] Query aus History auswählen und ausführen
-- [ ] History wird persistent gespeichert (überlebt Keypirinha-Neustart)
-- [ ] Anzahl der History-Einträge konfigurierbar (default: 30)
-- [ ] Duplikate: Gleiche Query nur einmal (bei erneutem Aufruf nach oben verschieben)
-- [ ] `#history clear` löscht die komplette History
+Implementation requirements
+- Add an explicit internal state machine to the plugin, e.g. modes: `query`, `history`, `results`.
+- Use `on_suggest(user_input, items_chain)` to route behavior based on the current mode and/or items_chain.
+- When `#history` is selected, show history entries as suggestions (existing behavior).
+- When a history entry is executed, do NOT close the flow. Switch to results mode and show JQL results immediately.
+  - Use `loop_on_suggest=True` on the history items (or the correct step item) so that selecting them leads back into `on_suggest` with an updated items_chain.
+  - Store the selected JQL in plugin state (e.g. `self.pending_jql`).
+  - Then fetch Jira issues for that JQL and return them as suggestions.
+- Reuse existing code paths for executing a JQL and for rendering issue items (to match the normal jql-query-feature).
+- Ensure user can type to filter issue items; do not implement custom filtering unless necessary.
+- Ensure default action on issue item remains unchanged.
+- Add a “Back” item (optional) that returns to history-mode or query-mode.
+- Keep persistence for history unchanged (whatever storage is used now).
 
----
+Deliverables
+1) Identify and modify the relevant plugin file(s) in my repo (jqe plugin).
+2) Provide a clean patch or code diff.
+3) Explain briefly how the state machine works and how `loop_on_suggest` + `items_chain` are used to keep the UI open.
 
-## Technische Details
+Repo context
+The plugin lives in my repository: https://github.com/jerik/keypi
+Locate the `jqe` plugin folder and implement changes there.
 
-### Speicherung
+Quality bar
+- Minimal, readable changes.
+- No breaking changes to the standard jql-query-feature.
+- Preserve existing shortcut-feature and history storage.
+- Add small comments where mode transitions happen.
 
-**Entscheidung:** JSON-Datei im User-Verzeichnis
-
-- **Pfad:** `%APPDATA%\Keypirinha\User\keypi_jqe_history.json`
-- **Format:**
-  ```json
-  {
-    "version": 1,
-    "queries": [
-      {"query": "assignee = currentUser()", "last_used": "2026-01-26T14:30:00"},
-      {"query": "project = MYPROJ AND status = Open", "last_used": "2026-01-26T14:25:00"}
-    ]
-  }
-  ```
-- **Vorteile:**
-  - Persistent über Neustarts
-  - Einfach zu lesen/debuggen
-  - Unabhängig von Plugin-Updates
-  - Gleicher Ort wie Config-Datei
-
-### Konfiguration
-
-In `keypi_jqe.ini`:
-```ini
-[main]
-# ... existing config ...
-
-# Maximum number of history entries (default: 30)
-history_max_entries = 30
-```
-
-### Duplikat-Handling
-
-- Bei Ausführung einer Query:
-  1. Prüfen ob Query bereits in History existiert
-  2. Falls ja: Entfernen aus alter Position
-  3. Query an erste Stelle (neueste) hinzufügen
-  4. Falls History > max_entries: Älteste entfernen
-
-### Integration in bestehendes `#`-Pattern
-
-| Eingabe | Verhalten |
-|---------|-----------|
-| `jqe #` | Zeigt: #edit, #history, #history clear, alle Shortcuts |
-| `jqe #history` | Zeigt History-Liste (neueste zuerst) |
-| `jqe #history clear` | Löscht die komplette History |
-| `jqe #his` | Prefix-Match auf "history" |
-
-### Workflow
-
-1. User tippt `jqe` → `#history`
-2. Liste der letzten Queries erscheint
-3. User wählt Query aus → Enter
-4. Query wird ausgeführt (wie manuell eingegebene Query)
-
----
-
-## Entschiedene Fragen
-
-- [x] `#history clear` zum Löschen der History → **Ja**
-- [x] History-Datei für manuelle Edits dokumentieren → **Nein**
-
----
-
-## Nicht im Scope
-
-- CQE History (separates Feature für später)
-- Export/Import von History
-- History-Suche/Filterung (Keypirinha filtert automatisch)
-
----
-
-## Abhängigkeiten
-
-- Bestehende Shortcuts-Implementierung (`#`-Pattern)
-- JSON-Handling (Python stdlib)
-
----
-
-## Testfälle
-
-- [ ] History-Datei wird erstellt wenn nicht vorhanden
-- [ ] Query wird zur History hinzugefügt nach Ausführung
-- [ ] Duplikate werden nach oben verschoben (nicht doppelt)
-- [ ] History wird auf max_entries begrenzt
-- [ ] History überlebt Keypirinha-Neustart
-- [ ] `#history` zeigt alle Einträge
-- [ ] `#history clear` löscht alle Einträge
-- [ ] Konfiguration `history_max_entries` wird respektiert
-- [ ] Korrupte History-Datei wird graceful behandelt
+Now implement it.
