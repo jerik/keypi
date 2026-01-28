@@ -8,6 +8,8 @@ import keypirinha_util as kpu
 import os
 import sys
 import json
+from datetime import datetime
+from urllib.parse import quote
 
 # Add lib directory to path
 _LIB_DIR = os.path.join(os.path.dirname(__file__), "lib")
@@ -23,13 +25,19 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.3.0"
+    VERSION = "1.4.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
     ITEMCAT_FILTER = kp.ItemCategory.USER_BASE + 3
     ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 4
+    ITEMCAT_HISTORY = kp.ItemCategory.USER_BASE + 5
+
+    # History file name
+    HISTORY_FILE = "keypi_jqe_history.json"
+    HISTORY_VERSION = 1
+    HISTORY_MAX_DEFAULT = 30
 
     # Modes
     MODE_JQL = "jql"
@@ -38,6 +46,8 @@ class JiraQueryExplorer(kp.Plugin):
     # Action names (for set_actions)
     ACTION_OPEN = "open"
     ACTION_COPY_URL = "copy_url"
+    ACTION_COPY_JQL = "copy_jql"
+    ACTION_OPEN_JQL_BROWSER = "open_jql_browser"
 
     def __init__(self):
         super().__init__()
@@ -56,6 +66,9 @@ class JiraQueryExplorer(kp.Plugin):
 
         # JQL Shortcuts
         self._jql_shortcuts = {}  # {shortcut_name: jql_query}
+
+        # History
+        self._history_max_entries = self.HISTORY_MAX_DEFAULT
 
     def on_start(self):
         """Called when plugin is loaded"""
@@ -76,6 +89,23 @@ class JiraQueryExplorer(kp.Plugin):
                     name=self.ACTION_COPY_URL,
                     label="Copy URL",
                     short_desc="Copy ticket URL to clipboard",
+                ),
+            ],
+        )
+
+        # Register actions for history items
+        self.set_actions(
+            self.ITEMCAT_HISTORY,
+            [
+                self.create_action(
+                    name=self.ACTION_COPY_JQL,
+                    label="Copy JQL",
+                    short_desc="Copy JQL query to clipboard (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_OPEN_JQL_BROWSER,
+                    label="Open in browser",
+                    short_desc="Open JQL search in Jira browser",
                 ),
             ],
         )
@@ -198,6 +228,98 @@ class JiraQueryExplorer(kp.Plugin):
             self.info(f"Opening config file: {config_path}")
             kpu.shell_execute(config_path)
             self._reset_to_jql_mode()
+            return
+
+        # Check if user pressed Tab/Enter on #history
+        # Show history entries
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "show_history"
+        ):
+            self.info("Showing history entries")
+            history = self._load_history()
+            suggestions = []
+            if history:
+                for entry in history:
+                    query = entry.get("query", "")
+                    last_used = entry.get("last_used", "")[:10]  # Date only
+                    suggestions.append(
+                        self.create_item(
+                            category=self.ITEMCAT_HISTORY,
+                            label=query,
+                            short_desc=f"Last used: {last_used}",
+                            target="history_entry",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
+                            data_bag=query,
+                        )
+                    )
+            else:
+                suggestions.append(
+                    self.create_item(
+                        category=kp.ItemCategory.KEYWORD,
+                        label="No history entries",
+                        short_desc="Execute some JQL queries to build history",
+                        target="no_history",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+            self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
+            return
+
+        # Check if user pressed Tab/Enter on #history clear
+        # Clear history and show confirmation
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "clear_history"
+        ):
+            self._clear_history()
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=kp.ItemCategory.KEYWORD,
+                        label="History cleared",
+                        short_desc="All history entries have been deleted",
+                        target="history_cleared",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
+            return
+
+        # Check if user selected a history entry
+        # Show the JQL as an "execute_jql" item
+        if (
+            self._current_mode == self.MODE_JQL
+            and len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_HISTORY
+            and items_chain[-1].target().startswith("history_entry_")
+        ):
+            jql_query = items_chain[-1].data_bag()
+            self.info(f"History entry selected, showing JQL: {jql_query[:50]}...")
+
+            # Show JQL as execute item (same as manual JQL input)
+            self.set_suggestions(
+                [
+                    self.create_item(
+                        category=self.ITEMCAT_QUERY,
+                        label=f"{self._keyword}: {jql_query}",
+                        short_desc="Press Tab to execute query, or Esc to go back",
+                        target="execute_jql",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                        data_bag=jql_query,
+                    )
+                ],
+                kp.Match.ANY,
+                kp.Sort.NONE,
+            )
             return
 
         self.dbg(f"MODE={self._current_mode}, JQL='{self._current_jql}'")
@@ -353,6 +475,9 @@ class JiraQueryExplorer(kp.Plugin):
             self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
             self.info(f"Query successful: {len(issues)} results cached")
 
+            # Add to history after successful execution
+            self._add_to_history(jql_query)
+
         except JiraAuthError as e:
             self.err(f"[_execute_jql_query] JiraAuthError: {str(e)}")
             self._current_mode = self.MODE_JQL
@@ -451,6 +576,35 @@ class JiraQueryExplorer(kp.Plugin):
             # Open config file with default editor
             kpu.shell_execute(config_path)
 
+        # Handle #history clear - Clear history
+        elif (
+            item.category() == self.ITEMCAT_SHORTCUT
+            and item.target() == "clear_history"
+        ):
+            self._clear_history()
+            self.info("History cleared via Enter")
+
+        # Handle history entry selection with actions
+        # Default: Copy JQL to clipboard
+        # Alternative: Open JQL search in browser
+        elif item.category() == self.ITEMCAT_HISTORY and item.target().startswith(
+            "history_entry_"
+        ):
+            jql_query = item.data_bag()
+
+            if not action or action.name() == self.ACTION_COPY_JQL:
+                # Default action: Copy JQL to clipboard
+                kpu.set_clipboard(jql_query)
+                self.info(f"Copied JQL to clipboard: {jql_query[:50]}...")
+
+            elif action.name() == self.ACTION_OPEN_JQL_BROWSER:
+                # Open JQL search in Jira browser
+                # URL format: <jira_url>/issues/?jql=<encoded_jql>
+                encoded_jql = quote(jql_query, safe="")
+                search_url = f"{self.jira_url}/issues/?jql={encoded_jql}"
+                self.info(f"Opening JQL in browser: {jql_query[:50]}...")
+                kpu.shell_execute(search_url)
+
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions
         elif item.category() == self.ITEMCAT_RESULT:
@@ -531,6 +685,16 @@ class JiraQueryExplorer(kp.Plugin):
                     self._jql_shortcuts[key.lower()] = jql_query
             self.info(f"Loaded {len(self._jql_shortcuts)} JQL shortcuts")
 
+        # Load history settings
+        self._history_max_entries = settings.get_int(
+            "history_max_entries",
+            section="main",
+            fallback=self.HISTORY_MAX_DEFAULT,
+            min=1,
+            max=1000,
+        )
+        self.info(f"History max entries: {self._history_max_entries}")
+
         # Initialize Jira client if credentials are available
         if self._is_configured():
             try:
@@ -602,6 +766,28 @@ class JiraQueryExplorer(kp.Plugin):
                     hit_hint=kp.ItemHitHint.KEEPALL,
                 )
             )
+            # Special shortcut: #history
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#history",
+                    short_desc="Show recent JQL queries",
+                    target="show_history",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                )
+            )
+            # Special shortcut: #history clear
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#history clear",
+                    short_desc="Clear all history entries",
+                    target="clear_history",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                )
+            )
             # Show all JQL shortcuts
             for name, jql in sorted(self._jql_shortcuts.items()):
                 suggestions.append(
@@ -625,18 +811,62 @@ class JiraQueryExplorer(kp.Plugin):
             elif shortcut_name == "edit":
                 # Special case: #edit exact match
                 self.info("EXACT MATCH: #edit -> open config")
-                # Open config and return
-                plugin_dir = os.path.dirname(__file__)
-                config_path = os.path.join(
-                    plugin_dir, "..", "..", "User", "keypi_jqe.ini"
-                )
-                config_path = os.path.abspath(config_path)
                 suggestions.append(
                     self.create_item(
                         category=self.ITEMCAT_SHORTCUT,
                         label="#edit",
                         short_desc="Press Enter to open config file",
                         target="edit_config",
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.KEEPALL,
+                    )
+                )
+            elif shortcut_name in ("history", "his"):
+                # Special case: #history exact match - show history entries
+                self.info("EXACT MATCH: #history -> show history")
+                history = self._load_history()
+                self.info(f"[#history] Loaded {len(history)} history entries")
+                if history:
+                    for i, entry in enumerate(history):
+                        query = entry.get("query", "")
+                        last_used = entry.get("last_used", "")[:10]  # Date only
+                        self.dbg(f"[#history] Entry {i}: {query[:30]}...")
+                        # IMPORTANT: Each item needs unique target!
+                        # Keypirinha deduplicates items with same target
+                        suggestions.append(
+                            self.create_item(
+                                category=self.ITEMCAT_HISTORY,
+                                label=query,
+                                short_desc=f"Last used: {last_used}",
+                                target=f"history_entry_{i}",
+                                args_hint=kp.ItemArgsHint.ACCEPTED,
+                                hit_hint=kp.ItemHitHint.IGNORE,
+                                data_bag=query,
+                            )
+                        )
+                    self.info(
+                        f"[#history] Added {len(history)} history items to suggestions"
+                    )
+                else:
+                    suggestions.append(
+                        self.create_item(
+                            category=kp.ItemCategory.KEYWORD,
+                            label="No history entries",
+                            short_desc="Execute some JQL queries to build history",
+                            target="no_history",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
+                        )
+                    )
+            elif shortcut_name == "history clear":
+                # Special case: #history clear exact match
+                self.info("EXACT MATCH: #history clear -> clear history")
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_SHORTCUT,
+                        label="#history clear",
+                        short_desc="Press Enter to clear all history",
+                        target="clear_history",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.KEEPALL,
                     )
@@ -665,6 +895,32 @@ class JiraQueryExplorer(kp.Plugin):
                             label="#edit",
                             short_desc="Open shortcuts configuration file",
                             target="edit_config",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
+                        )
+                    )
+
+                # Check if "history" matches as prefix
+                if "history".startswith(shortcut_name):
+                    suggestions.append(
+                        self.create_item(
+                            category=self.ITEMCAT_SHORTCUT,
+                            label="#history",
+                            short_desc="Show recent JQL queries",
+                            target="show_history",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
+                        )
+                    )
+
+                # Check if "history clear" matches as prefix
+                if "history clear".startswith(shortcut_name):
+                    suggestions.append(
+                        self.create_item(
+                            category=self.ITEMCAT_SHORTCUT,
+                            label="#history clear",
+                            short_desc="Clear all history entries",
+                            target="clear_history",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.KEEPALL,
                         )
@@ -699,4 +955,120 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             )
 
+        self.info(f"[_handle_shortcut_input] Setting {len(suggestions)} suggestions")
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
+
+    # =========================================================================
+    # History Methods
+    # =========================================================================
+
+    def _get_history_file_path(self):
+        """
+        Get the path to the history file
+
+        Returns:
+            Absolute path to history JSON file
+        """
+        # History file is stored in User directory (same as config)
+        plugin_dir = os.path.dirname(__file__)
+        user_dir = os.path.join(plugin_dir, "..", "..", "User")
+        user_dir = os.path.abspath(user_dir)
+        return os.path.join(user_dir, self.HISTORY_FILE)
+
+    def _load_history(self):
+        """
+        Load history from JSON file
+
+        Returns:
+            List of history entries [{"query": "...", "last_used": "..."}]
+        """
+        history_path = self._get_history_file_path()
+        self.dbg(f"[_load_history] Loading from: {history_path}")
+
+        if not os.path.exists(history_path):
+            self.dbg("[_load_history] File does not exist, returning empty list")
+            return []
+
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Validate structure
+            if not isinstance(data, dict) or "queries" not in data:
+                self.warn("[_load_history] Invalid structure, resetting")
+                return []
+
+            queries = data.get("queries", [])
+            self.dbg(f"[_load_history] Loaded {len(queries)} entries")
+            return queries
+
+        except json.JSONDecodeError as e:
+            self.warn(f"[_load_history] Corrupted JSON, resetting: {e}")
+            return []
+        except Exception as e:
+            self.warn(f"[_load_history] Error: {e}")
+            return []
+
+    def _save_history(self, queries):
+        """
+        Save history to JSON file
+
+        Args:
+            queries: List of history entries [{"query": "...", "last_used": "..."}]
+        """
+        history_path = self._get_history_file_path()
+        self.dbg(f"[_save_history] Saving {len(queries)} entries to: {history_path}")
+
+        data = {"version": self.HISTORY_VERSION, "queries": queries}
+
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(history_path), exist_ok=True)
+
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+
+            self.dbg("[_save_history] Saved successfully")
+
+        except Exception as e:
+            self.err(f"[_save_history] Error: {e}")
+
+    def _add_to_history(self, query):
+        """
+        Add a query to history
+
+        Args:
+            query: JQL query string
+        """
+        if not query or not query.strip():
+            self.dbg("[_add_to_history] Empty query, skipping")
+            return
+
+        query = query.strip()
+        self.dbg(f"[_add_to_history] Adding: {query[:50]}...")
+
+        queries = self._load_history()
+        original_count = len(queries)
+
+        # Remove duplicate if exists (case-insensitive comparison)
+        query_lower = query.lower()
+        queries = [q for q in queries if q.get("query", "").lower() != query_lower]
+        removed_duplicate = len(queries) < original_count
+
+        if removed_duplicate:
+            self.dbg("[_add_to_history] Removed duplicate entry")
+
+        # Add new entry at the beginning
+        new_entry = {"query": query, "last_used": datetime.now().isoformat()}
+        queries.insert(0, new_entry)
+
+        # Trim to max entries
+        queries = queries[: self._history_max_entries]
+
+        self._save_history(queries)
+        self.info(f"Added to history ({len(queries)} total): {query[:50]}...")
+
+    def _clear_history(self):
+        """Clear all history entries"""
+        self._save_history([])
+        self.info("History cleared")
