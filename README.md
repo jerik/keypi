@@ -146,7 +146,7 @@ jqe → #me → Enter # Execute "assignee = currentUser()"
 jqe → #edit       # Open config file for editing
 ```
 
-#### Query History (New in v1.4.0)
+#### Query History (New in v1.4.0, Virtual Query Mode in v1.5.0)
 
 Access your recently executed queries with `#history` (or `#his`)!
 
@@ -157,8 +157,11 @@ jqe → #history clear # Clear all history
 ```
 
 **History entry actions:**
-- **Enter**: Copy JQL to clipboard (default)
-- **Tab** → **Open in browser**: Open JQL search in Jira
+- **Tab**: Execute query and show results in Keypirinha (Virtual Query Mode) ✨
+- **Enter**: Open JQL search in browser
+
+**Virtual Query Mode (v1.5.0):**
+Select a history entry and press Tab to instantly see the Jira results - no need to re-type the query! You can then filter the results by typing and select a ticket to open.
 
 **Features:**
 - Automatically saves executed queries
@@ -332,6 +335,12 @@ critical = priority = Highest AND status != "Done"
 ---
 
 ## 📝 Changelog
+
+### Jira Query Explorer v1.5.0 (2026-01-29)
+- ✨ **Virtual Query Mode** - Tab on history entry executes query and shows results
+- 🚀 Seamless workflow: `#history` → Tab → See results → Filter → Open ticket
+- 🔄 Changed history entry behavior: Tab shows results, Enter opens browser
+- ✅ 8 new unit tests for Virtual Query Mode
 
 ### Jira Query Explorer v1.4.0 (2026-01-27)
 - ✨ Query History - recall recent queries with `#history` (or `#his`)
