@@ -140,7 +140,7 @@ mytask = assignee = currentUser() AND status = "Open"
 - ✏️ Einfach zu editieren und teilen
 - 🔄 Shortcuts sind case-insensitive (#Me = #me)
 
-### Query History (Neu in v1.4.0)
+### Query History (Neu in v1.4.0, Virtual Query Mode in v1.5.0)
 
 Greife schnell auf deine zuletzt ausgeführten Queries zu!
 
@@ -149,14 +149,22 @@ Greife schnell auf deine zuletzt ausgeführten Queries zu!
 1. **History anzeigen**:
    - Tippe: `jqe` → `#history` (oder `#his`) → Liste der letzten Queries erscheint
 
-2. **History-Eintrag verwenden**:
-   - Wähle Query aus History → `Enter` → JQL wird in Clipboard kopiert
-   - **Tab** drücken → Action-Menü:
-     - **Copy JQL**: JQL in Clipboard kopieren (Standard)
-     - **Open in browser**: JQL-Suche im Browser öffnen
+2. **History-Eintrag verwenden** (Virtual Query Mode ✨):
+   - Wähle Query aus History → **Tab** → Query wird ausgeführt → Ergebnisse erscheinen direkt!
+   - Du kannst die Ergebnisse dann filtern und ein Ticket auswählen
+   - Alternativ: **Enter** → JQL-Suche im Browser öffnen
 
 3. **History löschen**:
    - Tippe: `jqe` → `#history clear` → `Enter` → Alle Einträge gelöscht
+
+**Virtual Query Mode (v1.5.0):**
+
+Der neue Virtual Query Mode ermöglicht einen nahtlosen Workflow:
+```
+jqe → #history → Tab auf Eintrag → Ergebnisse erscheinen → Filtern → Ticket öffnen
+```
+
+Kein erneutes Eintippen der Query nötig!
 
 **Konfiguration** in `keypi_jqe.ini`:
 
@@ -168,10 +176,10 @@ history_max_entries = 30
 
 **Vorteile:**
 - 📜 Zuletzt verwendete Queries schnell wiederfinden
+- ✨ Virtual Query Mode: Tab auf History → Ergebnisse direkt sehen
 - 🔄 Duplikate werden automatisch nach oben verschoben
 - 💾 Persistent über Keypirinha-Neustarts
 - ⚙️ Konfigurierbare Anzahl der Einträge
-- 📋 JQL kopieren oder direkt im Browser öffnen
 
 ### Konfiguration
 

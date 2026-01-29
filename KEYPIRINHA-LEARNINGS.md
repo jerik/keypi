@@ -500,6 +500,30 @@ Phase 2: Filter Mode
 - ⚠️ **Pitfall**: Tab only works reliably at the **start** of item selection
 - 💡 **Lesson (JQE v1.4.0)**: Don't rely on Tab for complex multi-step workflows
 
+### Making Suggestions Chainable with Tab (loop_on_suggest)
+- ⚠️ **Critical**: For Tab to add a suggestion item to `items_chain`, you need **THREE things**:
+  1. `args_hint=kp.ItemArgsHint.ACCEPTED` - allows Tab to add to chain
+  2. `hit_hint=kp.ItemHitHint.KEEPALL` - enables chaining behavior
+  3. `loop_on_suggest=True` - **explicitly tells GUI to call on_suggest() on Tab**
+- ❌ **DON'T**: Use `hit_hint=IGNORE` for chainable items (Tab will do nothing!)
+- ❌ **DON'T**: Register actions (`set_actions()`) for items you want to chain (action menu takes priority over chaining)
+- ✅ **DO**: Use all three parameters together for "Virtual Query Mode" pattern
+- 💡 **Lesson (JQE v1.5.0)**: The key insight is `loop_on_suggest=True` - without it, Tab on suggestions does nothing!
+
+**Example - Chainable History Entry:**
+```python
+self.create_item(
+    category=self.ITEMCAT_HISTORY,
+    label=query,
+    short_desc="Tab: show results",
+    target=f"history_entry_{i}",
+    args_hint=kp.ItemArgsHint.ACCEPTED,   # Tab adds to chain
+    hit_hint=kp.ItemHitHint.KEEPALL,       # Enable chaining
+    loop_on_suggest=True,                  # CRITICAL: Call on_suggest on Tab
+    data_bag=query,
+)
+```
+
 ### Item Deduplication
 - ⚠️ **Pitfall**: Keypirinha **deduplicates items with the same `target`**
 - 🔧 **Solution**: Use unique targets for each item (e.g., `target=f"history_entry_{i}"`)
@@ -522,6 +546,7 @@ Phase 2: Filter Mode
 ---
 
 **Version History:**
+- **2026-01-29**: JQE v1.5.0 update (Virtual Query Mode - loop_on_suggest, hit_hint=KEEPALL, Tab chaining)
 - **2026-01-27**: JQE v1.4.0 update (History actions, API limitations documentation)
 - **2026-01-26**: JQE v1.4.0 update (Query History - JSON file storage, persistent state)
 - **2026-01-26**: CQE v1.2.0 update (CQL Shortcuts - same pattern as JQL Shortcuts)

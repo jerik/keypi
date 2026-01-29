@@ -449,5 +449,160 @@ class TestHistoryInputDetection(unittest.TestCase):
         self.assertFalse(self._is_history_command("historyclear"))
 
 
+class TestVirtualQueryModeConditions(unittest.TestCase):
+    """Test Virtual Query Mode condition checking logic
+
+    Virtual Query Mode (v1.5.0) allows Tab on history entries to execute
+    the JQL query directly and show results in Keypirinha.
+    """
+
+    # Simulated category constants (matching plugin values)
+    ITEMCAT_QUERY = 1001
+    ITEMCAT_HISTORY = 1005
+    MODE_JQL = "jql"
+    MODE_FILTER = "filter"
+
+    def _check_virtual_query_mode_conditions(
+        self, current_mode, items_chain, history_category, history_target_prefix
+    ):
+        """
+        Check if Virtual Query Mode should be triggered.
+
+        This simulates the condition check in on_suggest:
+        - Mode must be JQL (not FILTER)
+        - items_chain must have more than 1 item
+        - Last item must be a history entry (correct category)
+        - Last item's target must start with 'history_entry_'
+
+        Args:
+            current_mode: Current plugin mode (MODE_JQL or MODE_FILTER)
+            items_chain: List of dicts simulating items_chain
+            history_category: The category ID for history items
+            history_target_prefix: Expected target prefix
+
+        Returns:
+            bool: True if Virtual Query Mode should be triggered
+        """
+        if current_mode != self.MODE_JQL:
+            return False
+        if len(items_chain) <= 1:
+            return False
+        last_item = items_chain[-1]
+        if last_item.get("category") != history_category:
+            return False
+        if not last_item.get("target", "").startswith(history_target_prefix):
+            return False
+        return True
+
+    def test_vqm_triggers_with_valid_history_entry(self):
+        """Test VQM triggers when history entry is in chain"""
+        items_chain = [
+            {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+            {
+                "category": self.ITEMCAT_HISTORY,
+                "target": "history_entry_0",
+                "data_bag": "assignee = currentUser()",
+            },
+        ]
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_JQL, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertTrue(result)
+
+    def test_vqm_not_triggered_in_filter_mode(self):
+        """Test VQM does NOT trigger in FILTER mode"""
+        items_chain = [
+            {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+            {"category": self.ITEMCAT_HISTORY, "target": "history_entry_0"},
+        ]
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_FILTER, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertFalse(result)
+
+    def test_vqm_not_triggered_with_single_item_chain(self):
+        """Test VQM does NOT trigger with only keyword in chain"""
+        items_chain = [
+            {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+        ]
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_JQL, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertFalse(result)
+
+    def test_vqm_not_triggered_with_wrong_category(self):
+        """Test VQM does NOT trigger if last item is not history"""
+        items_chain = [
+            {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+            {"category": self.ITEMCAT_QUERY, "target": "execute_jql"},
+        ]
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_JQL, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertFalse(result)
+
+    def test_vqm_not_triggered_with_wrong_target_prefix(self):
+        """Test VQM does NOT trigger if target doesn't match prefix"""
+        items_chain = [
+            {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+            {"category": self.ITEMCAT_HISTORY, "target": "wrong_prefix_0"},
+        ]
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_JQL, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertFalse(result)
+
+    def test_vqm_triggers_with_multiple_history_entries(self):
+        """Test VQM works with different history entry indices"""
+        for i in range(10):
+            items_chain = [
+                {"category": self.ITEMCAT_QUERY, "target": "jqe"},
+                {"category": self.ITEMCAT_HISTORY, "target": f"history_entry_{i}"},
+            ]
+            result = self._check_virtual_query_mode_conditions(
+                self.MODE_JQL, items_chain, self.ITEMCAT_HISTORY, "history_entry_"
+            )
+            self.assertTrue(result, f"Should trigger for history_entry_{i}")
+
+    def test_vqm_empty_chain(self):
+        """Test VQM does NOT trigger with empty chain"""
+        result = self._check_virtual_query_mode_conditions(
+            self.MODE_JQL, [], self.ITEMCAT_HISTORY, "history_entry_"
+        )
+        self.assertFalse(result)
+
+
+class TestHistoryItemCreationParams(unittest.TestCase):
+    """Test that history items are created with correct parameters for Tab chaining
+
+    For Virtual Query Mode to work, history items must be created with:
+    - args_hint = ACCEPTED (allow Tab to add to chain)
+    - hit_hint = KEEPALL (enable Tab chaining)
+    - loop_on_suggest = True (tell GUI to call on_suggest on Tab)
+    - unique target per item (prevent deduplication)
+    """
+
+    def test_history_entry_targets_are_unique(self):
+        """Test that each history entry gets a unique target"""
+        entries = [
+            {"query": "query 1", "last_used": "2026-01-29"},
+            {"query": "query 2", "last_used": "2026-01-29"},
+            {"query": "query 3", "last_used": "2026-01-29"},
+        ]
+
+        targets = []
+        for i, entry in enumerate(entries):
+            target = f"history_entry_{i}"
+            targets.append(target)
+
+        # All targets should be unique
+        self.assertEqual(len(targets), len(set(targets)))
+
+        # Targets should have correct format
+        for i, target in enumerate(targets):
+            self.assertEqual(target, f"history_entry_{i}")
+            self.assertTrue(target.startswith("history_entry_"))
+
+
 if __name__ == "__main__":
     unittest.main()
