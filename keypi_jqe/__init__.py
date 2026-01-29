@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.5.0-dev.2"
+    VERSION = "1.5.0-dev.3"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -123,8 +123,15 @@ class JiraQueryExplorer(kp.Plugin):
             user_input: Current user input string
             items_chain: Chain of selected items
         """
-        self.dbg(
-            f"[on_suggest] user_input='{user_input}', mode={self._current_mode}, cached={len(self._cached_results)}, chain_len={len(items_chain) if items_chain else 0}"
+        # DEBUG: Log items_chain details to understand Tab behavior
+        chain_info = []
+        if items_chain:
+            for i, item in enumerate(items_chain):
+                chain_info.append(
+                    f"[{i}] cat={item.category()} target={item.target()[:30]}"
+                )
+        self.info(
+            f"[on_suggest] input='{user_input[:30]}' chain_len={len(items_chain) if items_chain else 0} chain={chain_info}"
         )
 
         # Only process if our keyword is in the chain
@@ -286,6 +293,13 @@ class JiraQueryExplorer(kp.Plugin):
         # VIRTUAL QUERY MODE: When user Tab-selects a history entry,
         # execute JQL directly and show results (instead of showing execute_jql item)
         # This implements the "History → Virtual Query Mode" feature
+        # DEBUG: Check each condition
+        if len(items_chain) > 1:
+            last_item = items_chain[-1]
+            self.info(
+                f"[VQM CHECK] mode={self._current_mode} last_cat={last_item.category()} "
+                f"expected_cat={self.ITEMCAT_HISTORY} target={last_item.target()[:30]}"
+            )
         if (
             self._current_mode == self.MODE_JQL
             and len(items_chain) > 1
