@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.5.0-dev.4"
+    VERSION = "1.5.0-dev.5"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -241,6 +241,7 @@ class JiraQueryExplorer(kp.Plugin):
                     last_used = entry.get("last_used", "")[:10]  # Date only
                     # IMPORTANT: Unique target per item (Keypirinha deduplicates same targets)
                     # args_hint=ACCEPTED allows Tab to add item to chain for virtual query mode
+                    # loop_on_suggest=True enables Tab to chain this item
                     suggestions.append(
                         self.create_item(
                             category=self.ITEMCAT_HISTORY,
@@ -249,6 +250,7 @@ class JiraQueryExplorer(kp.Plugin):
                             target=f"history_entry_{i}",
                             args_hint=kp.ItemArgsHint.ACCEPTED,
                             hit_hint=kp.ItemHitHint.KEEPALL,
+                            loop_on_suggest=True,
                             data_bag=query,
                         )
                     )
@@ -824,6 +826,7 @@ class JiraQueryExplorer(kp.Plugin):
                         self.dbg(f"[#history] Entry {i}: {query[:30]}...")
                         # IMPORTANT: Each item needs unique target!
                         # Keypirinha deduplicates items with same target
+                        # loop_on_suggest=True enables Tab to chain this item
                         suggestions.append(
                             self.create_item(
                                 category=self.ITEMCAT_HISTORY,
@@ -832,6 +835,7 @@ class JiraQueryExplorer(kp.Plugin):
                                 target=f"history_entry_{i}",
                                 args_hint=kp.ItemArgsHint.ACCEPTED,
                                 hit_hint=kp.ItemHitHint.KEEPALL,
+                                loop_on_suggest=True,
                                 data_bag=query,
                             )
                         )
