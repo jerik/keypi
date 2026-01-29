@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.5.0"
+    VERSION = "1.5.1"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -123,17 +123,6 @@ class JiraQueryExplorer(kp.Plugin):
             user_input: Current user input string
             items_chain: Chain of selected items
         """
-        # DEBUG: Log items_chain details to understand Tab behavior
-        chain_info = []
-        if items_chain:
-            for i, item in enumerate(items_chain):
-                chain_info.append(
-                    f"[{i}] cat={item.category()} target={item.target()[:30]}"
-                )
-        self.info(
-            f"[on_suggest] input='{user_input[:30]}' chain_len={len(items_chain) if items_chain else 0} chain={chain_info}"
-        )
-
         # Only process if our keyword is in the chain
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
             return
@@ -294,14 +283,6 @@ class JiraQueryExplorer(kp.Plugin):
 
         # VIRTUAL QUERY MODE: When user Tab-selects a history entry,
         # execute JQL directly and show results (instead of showing execute_jql item)
-        # This implements the "History → Virtual Query Mode" feature
-        # DEBUG: Check each condition
-        if len(items_chain) > 1:
-            last_item = items_chain[-1]
-            self.info(
-                f"[VQM CHECK] mode={self._current_mode} last_cat={last_item.category()} "
-                f"expected_cat={self.ITEMCAT_HISTORY} target={last_item.target()[:30]}"
-            )
         if (
             self._current_mode == self.MODE_JQL
             and len(items_chain) > 1
@@ -309,11 +290,6 @@ class JiraQueryExplorer(kp.Plugin):
             and items_chain[-1].target().startswith("history_entry_")
         ):
             jql_query = items_chain[-1].data_bag()
-            self.info(
-                f"[VIRTUAL QUERY MODE] History entry Tab-selected, executing: {jql_query[:50]}..."
-            )
-            # Execute JQL directly - results will be shown immediately
-            # User can then filter results by typing, and select a ticket
             self._execute_jql_query(jql_query)
             return
 
@@ -816,16 +792,11 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             elif shortcut_name in ("history", "his"):
                 # Special case: #history exact match - show history entries
-                self.info("EXACT MATCH: #history -> show history")
                 history = self._load_history()
-                self.info(f"[#history] Loaded {len(history)} history entries")
                 if history:
                     for i, entry in enumerate(history):
                         query = entry.get("query", "")
                         last_used = entry.get("last_used", "")[:10]  # Date only
-                        self.dbg(f"[#history] Entry {i}: {query[:30]}...")
-                        # IMPORTANT: Each item needs unique target!
-                        # Keypirinha deduplicates items with same target
                         # loop_on_suggest=True enables Tab to chain this item
                         suggestions.append(
                             self.create_item(
@@ -839,9 +810,6 @@ class JiraQueryExplorer(kp.Plugin):
                                 data_bag=query,
                             )
                         )
-                    self.info(
-                        f"[#history] Added {len(history)} history items to suggestions"
-                    )
                 else:
                     suggestions.append(
                         self.create_item(
@@ -950,7 +918,6 @@ class JiraQueryExplorer(kp.Plugin):
                 )
             )
 
-        self.info(f"[_handle_shortcut_input] Setting {len(suggestions)} suggestions")
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
     # =========================================================================

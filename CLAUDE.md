@@ -92,6 +92,7 @@ Am Ende jeder Feature-Implementierung:
 - [ ] Changelog in `keypi_jqe/res/changelog/` aktualisiert
 - [ ] `KEYPIRINHA-LEARNINGS.md` mit neuen Erkenntnissen aktualisiert
 - [ ] Manuelle Tests durchgeführt
+- [ ] **Debug-Logging entfernt** (Performance! Nur notwendige Logs behalten)
 - [ ] Kurze Zusammenfassung erstellt (was geändert, wie getestet)
 
 ---
