@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.5.0-dev.1"
+    VERSION = "1.5.0-dev.2"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -93,25 +93,10 @@ class JiraQueryExplorer(kp.Plugin):
             ],
         )
 
-        # Register actions for history items
-        # NOTE: First action is the default (Enter without Tab)
-        # Tab on history entry → Virtual Query Mode (show results in Keypirinha)
-        # Enter on history entry → Open in browser (default, since on_execute can't show suggestions)
-        self.set_actions(
-            self.ITEMCAT_HISTORY,
-            [
-                self.create_action(
-                    name=self.ACTION_OPEN_JQL_BROWSER,
-                    label="Open in browser",
-                    short_desc="Open JQL search in Jira browser (default)",
-                ),
-                self.create_action(
-                    name=self.ACTION_COPY_JQL,
-                    label="Copy JQL",
-                    short_desc="Copy JQL query to clipboard",
-                ),
-            ],
-        )
+        # NOTE: We intentionally do NOT register actions for ITEMCAT_HISTORY here.
+        # Reason: Registered actions cause Tab to show action menu instead of
+        # triggering on_suggest with items_chain (Virtual Query Mode).
+        # Enter on history entry is handled directly in on_execute (opens in browser).
 
     def on_catalog(self):
         """
@@ -582,23 +567,20 @@ class JiraQueryExplorer(kp.Plugin):
         # Default (Enter): Open JQL search in browser (since on_execute can't show suggestions)
         # Alternative: Copy JQL to clipboard
         # NOTE: Tab on history entry triggers Virtual Query Mode (via on_suggest)
+        # Handle history entry: Enter opens JQL search in browser
+        # NOTE: Tab triggers Virtual Query Mode (via on_suggest), Enter opens browser
         elif item.category() == self.ITEMCAT_HISTORY and item.target().startswith(
             "history_entry_"
         ):
             jql_query = item.data_bag()
-
-            if not action or action.name() == self.ACTION_OPEN_JQL_BROWSER:
-                # Default action: Open JQL search in Jira browser
-                # URL format: <jira_url>/issues/?jql=<encoded_jql>
-                encoded_jql = quote(jql_query, safe="")
-                search_url = f"{self.jira_url}/issues/?jql={encoded_jql}"
-                self.info(f"Opening JQL in browser: {jql_query[:50]}...")
-                kpu.shell_execute(search_url)
-
-            elif action.name() == self.ACTION_COPY_JQL:
-                # Secondary action: Copy JQL to clipboard
-                kpu.set_clipboard(jql_query)
-                self.info(f"Copied JQL to clipboard: {jql_query[:50]}...")
+            # Open JQL search in Jira browser
+            # URL format: <jira_url>/issues/?jql=<encoded_jql>
+            encoded_jql = quote(jql_query, safe="")
+            search_url = f"{self.jira_url}/issues/?jql={encoded_jql}"
+            self.info(
+                f"[HISTORY] Enter pressed, opening in browser: {jql_query[:50]}..."
+            )
+            kpu.shell_execute(search_url)
 
         # Handle FILTER mode - Open Jira ticket URL in browser
         # Handle RESULT items with actions
