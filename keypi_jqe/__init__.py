@@ -25,7 +25,7 @@ class JiraQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.5.0-dev.3"
+    VERSION = "1.5.0-dev.4"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -248,7 +248,7 @@ class JiraQueryExplorer(kp.Plugin):
                             short_desc=f"Last used: {last_used} | Tab: show results, Enter: open in browser",
                             target=f"history_entry_{i}",
                             args_hint=kp.ItemArgsHint.ACCEPTED,
-                            hit_hint=kp.ItemHitHint.IGNORE,
+                            hit_hint=kp.ItemHitHint.KEEPALL,
                             data_bag=query,
                         )
                     )
@@ -828,10 +828,10 @@ class JiraQueryExplorer(kp.Plugin):
                             self.create_item(
                                 category=self.ITEMCAT_HISTORY,
                                 label=query,
-                                short_desc=f"Last used: {last_used}",
+                                short_desc=f"Last used: {last_used} | Tab: show results",
                                 target=f"history_entry_{i}",
                                 args_hint=kp.ItemArgsHint.ACCEPTED,
-                                hit_hint=kp.ItemHitHint.IGNORE,
+                                hit_hint=kp.ItemHitHint.KEEPALL,
                                 data_bag=query,
                             )
                         )
