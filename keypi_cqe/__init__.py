@@ -31,7 +31,7 @@ class ConfluenceQueryExplorer(kp.Plugin):
     """
 
     # Version
-    VERSION = "1.3.0-dev.1"
+    VERSION = "1.3.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
