@@ -1,7 +1,7 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
 **Jira Plugin Version:** 1.4.0
-**Confluence Plugin Version:** 1.2.0
+**Confluence Plugin Version:** 1.3.0
 
 ---
 
@@ -402,6 +402,47 @@ recent = lastModified >= now("-7d") ORDER BY lastModified DESC
 - ✏️ Einfach zu editieren und teilen
 - 🔄 Shortcuts sind case-insensitive (#Myco = #myco)
 
+### Query History (Neu in v1.3.0)
+
+Greife schnell auf deine zuletzt ausgeführten Queries zu!
+
+**History verwenden:**
+
+1. **History anzeigen**:
+   - Tippe: `cqe` → `#history` (oder `#his`) → Liste der letzten Queries erscheint
+
+2. **History-Eintrag verwenden** (Virtual Query Mode ✨):
+   - Wähle Query aus History → **Tab** → Query wird ausgeführt → Ergebnisse erscheinen direkt!
+   - Du kannst die Ergebnisse dann filtern und eine Seite auswählen
+   - Alternativ: **Enter** → CQL-Suche im Browser öffnen
+
+3. **History löschen**:
+   - Tippe: `cqe` → `#history clear` → `Enter` → Alle Einträge gelöscht
+
+**Virtual Query Mode:**
+
+Der Virtual Query Mode ermöglicht einen nahtlosen Workflow:
+```
+cqe → #history → Tab auf Eintrag → Ergebnisse erscheinen → Filtern → Seite öffnen
+```
+
+Kein erneutes Eintippen der Query nötig!
+
+**Konfiguration** in `keypi_cqe.ini`:
+
+```ini
+[main]
+# Maximale Anzahl gespeicherter History-Einträge (Standard: 30)
+history_max_entries = 30
+```
+
+**Vorteile:**
+- 📜 Zuletzt verwendete Queries schnell wiederfinden
+- ✨ Virtual Query Mode: Tab auf History → Ergebnisse direkt sehen
+- 🔄 Duplikate werden automatisch nach oben verschoben
+- 💾 Persistent über Keypirinha-Neustarts
+- ⚙️ Konfigurierbare Anzahl der Einträge
+
 ### Konfiguration
 
 Das Keyword ist konfigurierbar in `keypi_cqe.ini`:
@@ -457,6 +498,15 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog (CQE)
 
+### Version 1.3.0 (2026-02-03)
+- **Neu:** Query History - Zuletzt ausgeführte Queries mit `#history` oder `#his` abrufen
+- **Neu:** Virtual Query Mode: Tab auf History-Eintrag → Ergebnisse direkt sehen
+- **Neu:** `#history clear` zum Löschen der kompletten History
+- **Feature:** Persistente History-Datei (überlebt Neustarts)
+- **Feature:** Konfigurierbare Anzahl History-Einträge (default: 30)
+- **Feature:** Duplikate werden automatisch nach oben verschoben
+- **Test:** 32 Unit-Tests für History-Funktionalität
+
 ### Version 1.2.0 (2026-01-26)
 - **Neu:** CQL Shortcuts für häufige Queries
 - **Neu:** # Prefix für Shortcut-Zugriff (#myco, #mytodo, etc.)
@@ -489,4 +539,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.4.0 | CQE v1.2.0
+**Ende** | JQE v1.4.0 | CQE v1.3.0

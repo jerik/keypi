@@ -30,6 +30,7 @@ Query Confluence Cloud using CQL (Confluence Query Language) directly from Keypi
 - ⚡ Execute CQL queries instantly
 - 🔍 Two-phase workflow: Query → Filter results locally
 - 💾 CQL Shortcuts for frequently used queries
+- 📜 Query History - recall recent queries with #history
 - 🎨 Configurable keyword (default: `cqe`)
 - 🎯 Multi-Action Support: Open, Copy URL, Edit page (Tab menu)
 - 📄 Display: Page title, Space, Type, Last Modified date
@@ -115,6 +116,14 @@ atlassian_api_key = your-api-token-here
 
 # Keyword to trigger the plugin (default: cqe)
 keyword = cqe
+
+# Maximum history entries (default: 30)
+history_max_entries = 30
+
+# CQL Shortcuts - Quick access to frequently used queries
+[cqe_shortcuts]
+myco = title ~ konzept and creator = currentUser()
+recent = lastModified >= now("-7d") ORDER BY lastModified DESC
 ```
 
 **💡 Tip:** You can use the same credentials for both plugins!
@@ -213,6 +222,29 @@ myco = title ~ konzept and creator = currentUser()
 mytodo = title ~ todo and creator = currentUser()
 recent = lastModified >= now("-7d") ORDER BY lastModified DESC
 ```
+
+#### Query History (New in v1.3.0)
+
+Access your recently executed queries with `#history` (or `#his`)!
+
+**Using history:**
+```
+cqe → #history       # Show recent queries (also: #his)
+cqe → #history clear # Clear all history
+```
+
+**History entry actions:**
+- **Tab**: Execute query and show results in Keypirinha (Virtual Query Mode) ✨
+- **Enter**: Open CQL search in browser
+
+**Virtual Query Mode:**
+Select a history entry and press Tab to instantly see the Confluence results - no need to re-type the query! You can then filter the results by typing and select a page to open.
+
+**Features:**
+- Automatically saves executed queries
+- Configurable max entries (default: 30)
+- Duplicates move to top (no duplicates in list)
+- Persistent across Keypirinha restarts
 
 #### Multi-Action Menu (New in v1.1.0)
 
@@ -370,6 +402,15 @@ critical = priority = Highest AND status != "Done"
 - ✨ Display tickets with key info
 - ✨ Open tickets in browser
 
+### Confluence Query Explorer v1.3.0 (2026-02-03)
+- ✨ **Query History** - recall recent queries with `#history` (or `#his`)
+- ✨ **Virtual Query Mode** - Tab on history entry executes query and shows results
+- ✨ `#history clear` to delete all history
+- 💾 Persistent history across restarts (JSON file)
+- ⚙️ Configurable max history entries (default: 30)
+- 🔄 Duplicate queries move to top
+- ✅ 32 unit tests for history functionality
+
 ### Confluence Query Explorer v1.2.0 (2026-01-26)
 - ✨ CQL Shortcuts for frequently used queries
 - ✨ # prefix for shortcut access
@@ -404,7 +445,6 @@ See [BACKLOG.md](BACKLOG.md) for planned features and ideas:
 - Multi-instance support
 - Status indicators with colors/icons
 - Ticket actions (status changes, comments)
-- CQE Query History
 
 ---
 
