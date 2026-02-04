@@ -141,6 +141,109 @@ GET /wiki/rest/api/group/member?groupName=confluence-users
 - [] Aktualisiere am Ende die dokumentation, README.md, documentation.md, KEYPIRINHA-LEARNING.md
 - [] Nutze eine Versionnummer für das neue Plugin
 
+## Implementierungsplan
+
+### 1. Plugin-Struktur
+
+```
+keypi_us/
+├── __init__.py              # Plugin-Hauptklasse: UserSearchPlugin
+├── lib/
+│   ├── __init__.py          # Package Marker
+│   └── user_client.py       # Jira User API Client
+└── res/
+    ├── keypi_us.ini         # Benutzer-Konfigurationsdatei (Template)
+    └── changelog/
+        └── v1.0.0.md        # Initial Release
+```
+
+### 2. API-Endpunkt (Jira Cloud)
+
+Basierend auf der Recherche nutzen wir die **Jira Cloud User Search API**:
+
+```http
+GET /rest/api/3/user/search?query=<suchbegriff>&maxResults=50
+```
+
+**Response-Felder (relevant):**
+- `accountId` - Eindeutige Benutzer-ID
+- `displayName` - Anzeigename
+- `emailAddress` - E-Mail (falls sichtbar, abhängig von Privacy-Settings)
+- `avatarUrls` - Avatar (optional)
+- `active` - Aktiv/Inaktiv
+- `self` - API-Link zum Benutzer
+
+**Wichtig:**
+- E-Mail-Adresse wird möglicherweise NICHT von der API zurückgegeben (Privacy)
+- Fallback: Profil-URL verwenden (keine Teams-Chat-Option ohne E-Mail)
+
+### 3. Actions
+
+| # | Name | Beschreibung | Umsetzung |
+|---|------|-------------|-----------|
+| 1 | **Teams Chat** (Standard) | MS Teams Chat öffnen | `cmd /K start sip:{email}` |
+| 2 | **Profil öffnen** | Jira-Benutzerprofil im Browser | `kpu.shell_execute(profile_url)` |
+
+**Profil-URL Format:**
+```
+{jira_url}/jira/people/{accountId}
+```
+
+### 4. Konfiguration (keypi_us.ini)
+
+```ini
+[main]
+# Keyword to trigger the plugin (default: us)
+keyword = us
+
+# Jira Cloud URL (required)
+jira_url = https://your-domain.atlassian.net
+
+# Atlassian credentials (required)
+atlassian_email = your.email@company.com
+atlassian_api_key = your-api-token
+```
+
+### 5. Workflow
+
+```
+1. User tippt: us <Tab> Max
+2. Plugin zeigt Hint: "Enter drücken für Suche"
+3. User drückt Enter
+4. Plugin führt API-Call aus: /rest/api/3/user/search?query=Max
+5. Plugin zeigt Ergebnisliste:
+   - Max Mustermann | max.mustermann@company.com
+   - Maxine Schmidt | maxine.schmidt@company.com
+6. User wählt Eintrag:
+   - Enter (Standard): Teams Chat öffnen
+   - Tab → Action wählen: Profil öffnen
+```
+
+### 6. Technischer Durchstich
+
+**Ziel:** Validieren, dass die User Search API funktioniert und welche Felder zurückkommen.
+
+**Schritte:**
+1. `user_client.py` erstellen mit `search_users(query)` Methode
+2. Test-Script oder manueller Test gegen Live-API
+3. Response-Struktur analysieren (insb. emailAddress-Verfügbarkeit)
+4. Entscheidung treffen: Was tun wenn keine E-Mail verfügbar?
+
+**Offene Frage:**
+> Wie soll das Plugin reagieren, wenn die E-Mail-Adresse nicht von der API zurückgegeben wird?
+> - Option A: Teams-Chat-Action ausgrauen/deaktivieren
+> - Option B: Nur Profil-Action anbieten
+> - Option C: Fehlermeldung in short_desc anzeigen
+
+---
+
 ## Fortschritt
 
+- [x] Plan erstellt und dokumentiert
+- [ ] Technischer Durchstich: API-Test
+- [ ] user_client.py implementieren
+- [ ] Plugin-Klasse implementieren
+- [ ] Konfigurationsdatei erstellen
+- [ ] Manuelle Tests
+- [ ] Dokumentation aktualisieren
 
