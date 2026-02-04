@@ -23,11 +23,12 @@ class UserSearch(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.2"
+    VERSION = "1.0.0-dev.3"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
+    ITEMCAT_RESULT_NO_EMAIL = kp.ItemCategory.USER_BASE + 3  # Users without email
 
     # Action names
     ACTION_TEAMS_CHAT = "teams_chat"
@@ -51,7 +52,7 @@ class UserSearch(kp.Plugin):
         """Called when plugin is loaded"""
         self.info(f"UserSearch v{self.VERSION} loaded")
 
-        # Register actions for result items
+        # Register actions for result items WITH email
         self.set_actions(
             self.ITEMCAT_RESULT,
             [
@@ -64,6 +65,23 @@ class UserSearch(kp.Plugin):
                     name=self.ACTION_OPEN_PROFILE,
                     label="Open Profile",
                     short_desc="Open user profile in browser",
+                ),
+            ],
+        )
+
+        # Register actions for result items WITHOUT email
+        self.set_actions(
+            self.ITEMCAT_RESULT_NO_EMAIL,
+            [
+                self.create_action(
+                    name=self.ACTION_OPEN_PROFILE,
+                    label="Open Profile",
+                    short_desc="Open user profile in browser (default)",
+                ),
+                self.create_action(
+                    name=self.ACTION_TEAMS_CHAT,
+                    label="Teams Chat (nicht möglich - keine E-Mail)",
+                    short_desc="E-Mail-Adresse nicht verfügbar",
                 ),
             ],
         )
@@ -161,28 +179,36 @@ class UserSearch(kp.Plugin):
             self._execute_search(query)
             return
 
-        # Handle result item actions
+        # Handle result item actions (with email)
         if item.category() == self.ITEMCAT_RESULT:
             user_data = json.loads(item.data_bag())
             email = user_data.get("email")
             profile_url = user_data.get("profile_url")
-            display_name = user_data.get("display_name")
 
             if not action or action.name() == self.ACTION_TEAMS_CHAT:
                 # Default action: Teams Chat
-                if email:
-                    teams_url = f"sip:{email}"
-                    self.dbg(f"Opening Teams chat: {teams_url}")
-                    kpu.shell_execute(teams_url)
-                else:
-                    self.warn(
-                        f"No email for user {display_name} - opening profile instead"
-                    )
-                    kpu.shell_execute(profile_url)
+                teams_url = f"sip:{email}"
+                self.dbg(f"Opening Teams chat: {teams_url}")
+                kpu.shell_execute(teams_url)
 
             elif action.name() == self.ACTION_OPEN_PROFILE:
                 self.dbg(f"Opening profile: {profile_url}")
                 kpu.shell_execute(profile_url)
+
+        # Handle result item actions (without email)
+        elif item.category() == self.ITEMCAT_RESULT_NO_EMAIL:
+            user_data = json.loads(item.data_bag())
+            profile_url = user_data.get("profile_url")
+
+            # Default action for no-email users: Open Profile
+            # Teams Chat action does nothing (no email available)
+            if not action or action.name() == self.ACTION_OPEN_PROFILE:
+                self.dbg(f"Opening profile: {profile_url}")
+                kpu.shell_execute(profile_url)
+
+            elif action.name() == self.ACTION_TEAMS_CHAT:
+                # No email - do nothing, action label already says "nicht möglich"
+                self.info("Teams Chat not possible - no email available")
 
     def _execute_search(self, query):
         """
@@ -235,13 +261,15 @@ class UserSearch(kp.Plugin):
                 else:
                     users_without_email += 1
 
-                # Build label and description
+                # Build label and description based on email availability
                 if email:
                     label = f"{display_name} | {email}"
                     short_desc = "Enter: Teams Chat | Tab: Actions"
+                    item_category = self.ITEMCAT_RESULT
                 else:
-                    label = f"{display_name} | (no email)"
-                    short_desc = "Enter: Open Profile (no email available)"
+                    label = f"{display_name} | (keine E-Mail)"
+                    short_desc = "Enter: Profil öffnen | Tab: Actions"
+                    item_category = self.ITEMCAT_RESULT_NO_EMAIL
 
                 # Add inactive/app indicator
                 if not active:
@@ -251,7 +279,7 @@ class UserSearch(kp.Plugin):
 
                 suggestions.append(
                     self.create_item(
-                        category=self.ITEMCAT_RESULT,
+                        category=item_category,
                         label=label,
                         short_desc=short_desc,
                         target=user.get("profile_url", ""),
