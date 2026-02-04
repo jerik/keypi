@@ -240,10 +240,20 @@ atlassian_api_key = your-api-token
 ## Fortschritt
 
 - [x] Plan erstellt und dokumentiert
-- [ ] Technischer Durchstich: API-Test
-- [ ] user_client.py implementieren
-- [ ] Plugin-Klasse implementieren
-- [ ] Konfigurationsdatei erstellen
+- [x] user_client.py implementieren
+- [x] Plugin-Klasse implementieren
+- [x] Konfigurationsdatei erstellen
+- [ ] **Technischer Durchstich: API-Test in Keypirinha** ← aktuell
+- [ ] Entscheidung: Email-Handling basierend auf API-Response
+- [ ] Plugin finalisieren
 - [ ] Manuelle Tests
 - [ ] Dokumentation aktualisieren
+
+### Nächster Schritt: Plugin testen
+
+1. Plugin nach `%APPDATA%\Keypirinha\InstalledPackages\keypi_us\` kopieren
+2. Config erstellen: `%APPDATA%\Keypirinha\User\keypi_us.ini` mit Jira-Credentials
+3. Keypirinha neu starten (Ctrl+Alt+R)
+4. Suchen: `us` → Tab → Suchbegriff → Enter
+5. API-Response liegt in: `%APPDATA%\Keypirinha\User\keypi_us_debug_response.json`
 
