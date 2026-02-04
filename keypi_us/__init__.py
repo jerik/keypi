@@ -23,7 +23,7 @@ class UserSearch(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.4"
+    VERSION = "1.0.0-dev.5"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
