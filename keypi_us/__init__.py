@@ -23,7 +23,7 @@ class UserSearch(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.1"
+    VERSION = "1.0.0-dev.2"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -89,6 +89,8 @@ class UserSearch(kp.Plugin):
         """
         Handle user input and provide suggestions
         """
+        self.dbg(f"on_suggest: input='{user_input}', chain_len={len(items_chain)}")
+
         # Only process if our keyword is in the chain
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
             return
@@ -127,6 +129,8 @@ class UserSearch(kp.Plugin):
             return
 
         # User is typing - show "Press Enter" hint
+        # IMPORTANT: args_hint=FORBIDDEN allows Enter to execute (not require more input)
+        self.dbg(f"Showing search item for query: '{user_input.strip()}'")
         self.set_suggestions(
             [
                 self.create_item(
@@ -134,7 +138,7 @@ class UserSearch(kp.Plugin):
                     label=f"{self._keyword}: {user_input.strip()}",
                     short_desc="Press Enter to search",
                     target="execute_search",
-                    args_hint=kp.ItemArgsHint.REQUIRED,
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.KEEPALL,
                     data_bag=user_input.strip(),
                 )
@@ -145,6 +149,11 @@ class UserSearch(kp.Plugin):
         """
         Execute action on selected item
         """
+        self.dbg(
+            f"on_execute: cat={item.category()}, target='{item.target()}', "
+            f"action={action.name() if action else 'None'}"
+        )
+
         # Handle search execution
         if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_search":
             query = item.data_bag()
