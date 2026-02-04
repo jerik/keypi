@@ -23,12 +23,13 @@ class UserSearch(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.5"
+    VERSION = "1.0.0-dev.6"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
     ITEMCAT_RESULT_NO_EMAIL = kp.ItemCategory.USER_BASE + 3  # Users without email
+    ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 4  # For #edit etc.
 
     # Modes (state machine)
     MODE_SEARCH = "search"
@@ -62,18 +63,19 @@ class UserSearch(kp.Plugin):
         self._reset_to_search_mode()
 
         # Register actions for result items WITH email
+        # Order: Open Profile first (for quick Tab access), Teams Chat is default (Enter)
         self.set_actions(
             self.ITEMCAT_RESULT,
             [
                 self.create_action(
-                    name=self.ACTION_TEAMS_CHAT,
-                    label="Teams Chat",
-                    short_desc="Open MS Teams chat with user (default)",
-                ),
-                self.create_action(
                     name=self.ACTION_OPEN_PROFILE,
                     label="Open Profile",
                     short_desc="Open user profile in browser",
+                ),
+                self.create_action(
+                    name=self.ACTION_TEAMS_CHAT,
+                    label="Teams Chat (default)",
+                    short_desc="Open MS Teams chat with user",
                 ),
             ],
         )
@@ -84,8 +86,8 @@ class UserSearch(kp.Plugin):
             [
                 self.create_action(
                     name=self.ACTION_OPEN_PROFILE,
-                    label="Open Profile",
-                    short_desc="Open user profile in browser (default)",
+                    label="Open Profile (default)",
+                    short_desc="Open user profile in browser",
                 ),
                 self.create_action(
                     name=self.ACTION_TEAMS_CHAT,
@@ -159,6 +161,20 @@ class UserSearch(kp.Plugin):
             self._execute_search(query)
             return
 
+        # Check if user pressed Tab/Enter on #edit shortcut
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "edit_config"
+        ):
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_us.ini")
+            config_path = os.path.abspath(config_path)
+            self.info(f"Opening config file: {config_path}")
+            kpu.shell_execute(config_path)
+            self._reset_to_search_mode()
+            return
+
         # State machine: Handle SEARCH mode vs FILTER mode
         if self._current_mode == self.MODE_SEARCH:
             # SEARCH Input Mode - NO API calls during typing
@@ -169,13 +185,16 @@ class UserSearch(kp.Plugin):
                         self.create_item(
                             category=kp.ItemCategory.KEYWORD,
                             label="Enter search term...",
-                            short_desc="Example: Max or max.mustermann | Press Tab to search",
+                            short_desc="Example: Max or max.mustermann | Use #edit for config",
                             target="hint",
                             args_hint=kp.ItemArgsHint.FORBIDDEN,
                             hit_hint=kp.ItemHitHint.IGNORE,
                         )
                     ]
                 )
+            elif user_input.strip().startswith("#"):
+                # Shortcut mode - handle #edit
+                self._handle_shortcut_input(user_input.strip())
             else:
                 # User is typing - show "Press Tab to search" hint
                 self.set_suggestions(
@@ -226,6 +245,15 @@ class UserSearch(kp.Plugin):
         """
         Execute action on selected item
         """
+        # Handle #edit shortcut
+        if item.category() == self.ITEMCAT_SHORTCUT and item.target() == "edit_config":
+            plugin_dir = os.path.dirname(__file__)
+            config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_us.ini")
+            config_path = os.path.abspath(config_path)
+            self.info(f"Opening config file: {config_path}")
+            kpu.shell_execute(config_path)
+            return
+
         # Handle result item actions (with email)
         if item.category() == self.ITEMCAT_RESULT:
             user_data = json.loads(item.data_bag())
@@ -355,11 +383,11 @@ class UserSearch(kp.Plugin):
             # Build label and description based on email availability
             if email:
                 label = f"{display_name} | {email}"
-                short_desc = "Enter: Teams Chat | Tab: Actions"
+                short_desc = "Enter: Teams Chat | Tab+Enter: Profil"
                 item_category = self.ITEMCAT_RESULT
             else:
                 label = f"{display_name} | (keine E-Mail)"
-                short_desc = "Enter: Profil öffnen | Tab: Actions"
+                short_desc = "Enter: Profil öffnen"
                 item_category = self.ITEMCAT_RESULT_NO_EMAIL
 
             # Add inactive/app indicator
@@ -418,6 +446,45 @@ class UserSearch(kp.Plugin):
         self._current_query = ""
         self._cached_results = []
         self._filter_text = ""
+
+    def _handle_shortcut_input(self, user_input):
+        """
+        Handle shortcut input starting with #
+
+        Args:
+            user_input: User input string starting with #
+        """
+        shortcut_name = user_input[1:].lower()  # Remove # and lowercase
+
+        suggestions = []
+
+        # Show #edit if matches
+        if shortcut_name == "" or "edit".startswith(shortcut_name):
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#edit",
+                    short_desc="Open configuration file",
+                    target="edit_config",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                )
+            )
+
+        if not suggestions:
+            # No shortcuts found
+            suggestions.append(
+                self.create_item(
+                    category=kp.ItemCategory.KEYWORD,
+                    label=f"{self._keyword}: #{shortcut_name}",
+                    short_desc="Unknown shortcut. Available: #edit",
+                    target="no_shortcuts",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+
+        self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
     def on_events(self, flags):
         """Handle events (e.g., configuration changes)"""
