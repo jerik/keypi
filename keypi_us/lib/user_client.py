@@ -33,14 +33,13 @@ class UserClient:
         encoded = b64encode(credentials.encode()).decode()
         return f"Basic {encoded}"
 
-    def search_users(self, query, max_results=50, save_raw_response_path=None):
+    def search_users(self, query, max_results=50):
         """
         Search Jira users by query string
 
         Args:
             query: Search string (name, email, etc.)
             max_results: Maximum number of results to return (default: 50)
-            save_raw_response_path: Optional path to save raw JSON response for debugging
 
         Returns:
             List of users with parsed fields
@@ -72,11 +71,6 @@ class UserClient:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw_data = response.read().decode()
                 data = json.loads(raw_data)
-
-            # Save raw response for debugging if path provided
-            if save_raw_response_path:
-                with open(save_raw_response_path, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
 
             # Parse and return users
             return self._parse_users(data)
