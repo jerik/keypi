@@ -22,8 +22,8 @@ class UserSearch(kp.Plugin):
     Allows searching for users via Jira Cloud API from Keypirinha
     """
 
-    # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.6"
+    # Version
+    VERSION = "1.0.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1

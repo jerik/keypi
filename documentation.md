@@ -1,7 +1,8 @@
 # KeyPi - Atlassian Query Explorer Plugins
 
-**Jira Plugin Version:** 1.4.0
+**Jira Plugin Version:** 1.5.1
 **Confluence Plugin Version:** 1.3.0
+**User Search Plugin Version:** 1.0.0
 
 ---
 
@@ -12,6 +13,7 @@ KeyPi ist eine Sammlung von Keypirinha-Plugins für Atlassian Cloud-Produkte.
 **Verfügbare Plugins:**
 - **KeyPi-JQE**: Jira Query Explorer - Abfragen von Jira Cloud mittels JQL
 - **KeyPi-CQE**: Confluence Query Explorer - Abfragen von Confluence Cloud mittels CQL
+- **KeyPi-US**: User Search - Nutzersuche via Jira Cloud API
 
 **Gemeinsame Funktionen:**
 - Queries aus Keypirinha ausführen
@@ -539,4 +541,162 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.4.0 | CQE v1.3.0
+---
+
+# 👤 User Search (US)
+
+## Funktionen
+- Nutzersuche via Jira Cloud API
+- Ergebnisse als filterbare Liste
+- **Multi-Action Support**: Teams Chat oder Profil öffnen
+- Integration mit MS Teams
+
+---
+
+## 🚀 Installation (US)
+
+### Voraussetzungen
+- Keypirinha (https://keypirinha.com)
+- Jira Cloud Account
+- Atlassian API Token (https://id.atlassian.com/manage-profile/security/api-tokens)
+
+### Manuelle Installation
+1. Kopiere `keypi_us/` nach:
+   - **Standard:** `%APPDATA%\Keypirinha\InstalledPackages\`
+   - **Portable:** `<Keypirinha>\portable\Profile\InstalledPackages\`
+
+---
+
+## ⚙️ Konfiguration (US)
+
+Erstelle: `%APPDATA%\Keypirinha\User\keypi_us.ini` (bzw. Portable-Pfad)
+
+```ini
+[main]
+keyword = us
+jira_url = https://deine-firma.atlassian.net
+atlassian_email = deine@email.com
+atlassian_api_key = dein-api-token
+```
+
+**Hinweis:** Du kannst dieselben Credentials wie beim Jira-Plugin verwenden!
+
+Keypirinha neu starten: `Ctrl + Alt + R`
+
+---
+
+## 💻 Verwendung (US)
+
+### Basis-Workflow
+
+1. Tippe: `us` → `Tab`
+2. Suchbegriff eingeben: `Max`
+3. `Tab` drücken → Suche wird ausgeführt
+4. Ergebnisse erscheinen:
+   - Format: `Max Mustermann | max.mustermann@company.com`
+5. Nutzer auswählen → `Enter` → Teams Chat öffnet sich
+
+### Filter-Modus
+
+Nach Ausführung der Suche kannst du die Ergebnisse filtern:
+
+1. Suchbegriff eingeben: `schmidt` → `Tab`
+2. Ergebnisse werden angezeigt (z.B. 30 Nutzer)
+3. Weiteren Text eingeben: `anna` → filtert Ergebnisse lokal
+4. Nutzer auswählen → `Enter` → Teams Chat öffnet sich
+
+**Vorteile:**
+- Keine zusätzlichen API-Calls beim Filtern
+- Schnelles Durchsuchen großer Ergebnislisten
+- Filter durchsucht: Name, E-Mail
+
+### Multi-Action Support
+
+Jeder Nutzer-Eintrag bietet mehrere Aktionen:
+
+**Standardaktion (Enter):**
+- Teams Chat öffnen (bei Nutzern mit E-Mail)
+- Profil öffnen (bei Nutzern ohne E-Mail)
+
+**Action-Menü (Tab drücken):**
+1. **Open Profile**: Jira-Benutzerprofil im Browser öffnen
+2. **Teams Chat**: MS Teams Chat öffnen (Standard)
+
+**Bei Nutzern ohne E-Mail:**
+- Teams Chat zeigt: "nicht möglich - keine E-Mail"
+- Standard-Action öffnet Profil
+
+**Workflow:**
+1. Suche ausführen → Ergebnisse erscheinen
+2. Nutzer auswählen
+3. **Tab** drücken → Action-Menü öffnet sich
+4. Action auswählen
+5. **Enter** drücken → Action wird ausgeführt
+
+**Vorteile:**
+- 💬 Schneller Zugriff auf Teams Chat
+- 👤 Direkt zum Jira-Profil springen
+- 🔄 Tab+Enter für schnellen Profilzugriff
+
+### Config bearbeiten
+
+Tippe: `us` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+### Konfiguration
+
+Das Keyword ist konfigurierbar in `keypi_us.ini`:
+
+```ini
+[main]
+keyword = us  # Ändere dies nach Belieben (z.B. "user")
+```
+
+---
+
+## 🔧 Troubleshooting (US)
+
+### "Configuration missing"
+- Prüfe ob `keypi_us.ini` im User-Ordner existiert
+- Alle drei Werte ausgefüllt?
+- Keypirinha neugestartet?
+
+### "Authentication failed"
+- API Token korrekt?
+- E-Mail korrekt?
+- Jira-URL ohne `/` am Ende?
+
+### "Keine E-Mail verfügbar"
+- Atlassian Privacy-Einstellungen des Nutzers
+- Einige Nutzer haben E-Mail-Sichtbarkeit deaktiviert
+
+### Logs ansehen
+Keypirinha-Konsole: `F2`
+
+---
+
+## 📋 Limits (US)
+
+- Max. 50 Ergebnisse pro Suche
+- 10 Sekunden Timeout
+- E-Mail-Verfügbarkeit abhängig von Nutzer-Einstellungen
+
+---
+
+## 🔄 Changelog (US)
+
+### Version 1.0.0 (2026-02-05)
+- **Initial Release:** User Search Plugin
+- **Neu:** Nutzersuche via Jira Cloud API
+- **Neu:** Two-Phase Filter Mode (Suche → Filter Results)
+- **Neu:** Multi-Action Support
+  - Open Profile (Tab+Enter)
+  - Teams Chat (Enter, Standard)
+- **Neu:** #edit Shortcut zum Öffnen der Config
+- **Feature:** Erkennung von Nutzern ohne E-Mail
+- **Feature:** Teams Chat Integration via sip: Protokoll
+- **Feature:** Konfigurierbares Keyword (default: "us")
+- **Test:** 19 Unit-Tests für Filter und Parsing
+
+---
+
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.0.0
