@@ -546,6 +546,7 @@ self.create_item(
 ---
 
 **Version History:**
+- **2026-02-05**: US v1.0.0 release (User Search - uses JQE patterns: state machine, actions, shortcuts)
 - **2026-02-03**: CQE v1.3.0 update (Query History - same pattern as JQE, Virtual Query Mode)
 - **2026-01-29**: JQE v1.5.0 update (Virtual Query Mode - loop_on_suggest, hit_hint=KEEPALL, Tab chaining)
 - **2026-01-27**: JQE v1.4.0 update (History actions, API limitations documentation)
