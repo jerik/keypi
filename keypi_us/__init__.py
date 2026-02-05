@@ -24,7 +24,7 @@ class UserSearch(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.1.0-dev.1"
+    VERSION = "1.1.0"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -651,10 +651,10 @@ class UserSearch(kp.Plugin):
                 self.create_item(
                     category=self.ITEMCAT_SHORTCUT,
                     label="#history",
-                    short_desc="Show all history entries",
+                    short_desc="Show all history entries (Tab to show)",
                     target="show_history",
-                    args_hint=kp.ItemArgsHint.ACCEPTED,
-                    hit_hint=kp.ItemHitHint.KEEPALL,
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.NOARGS,
                 )
             )
 
