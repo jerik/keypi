@@ -35,6 +35,18 @@ Query Confluence Cloud using CQL (Confluence Query Language) directly from Keypi
 - 🎯 Multi-Action Support: Open, Copy URL, Edit page (Tab menu)
 - 📄 Display: Page title, Space, Type, Last Modified date
 
+### 👤 User Search (US)
+Search for users via Jira Cloud API and quickly open Teams chat or user profiles.
+
+**Key Features:**
+- ⚡ Search users by name or email
+- 🔍 Two-phase workflow: Search → Filter results locally
+- 📜 User History - recent users shown while typing
+- 💬 Teams Chat integration (sip: protocol)
+- 👤 Direct profile access in browser
+- 🎨 Configurable keyword (default: `us`)
+- 🎯 Multi-Action Support: Teams Chat, Open Profile
+
 **Shared Features:**
 - 🔐 Secure API token authentication
 - 🔄 Shared Atlassian credentials across plugins
@@ -58,6 +70,7 @@ Query Confluence Cloud using CQL (Confluence Query Language) directly from Keypi
    ```
    - Copy `keypi_jqe/` for Jira plugin
    - Copy `keypi_cqe/` for Confluence plugin
+   - Copy `keypi_us/` for User Search plugin
 
 2. **Create configuration files** in:
    ```
@@ -126,7 +139,29 @@ myco = title ~ konzept and creator = currentUser()
 recent = lastModified >= now("-7d") ORDER BY lastModified DESC
 ```
 
-**💡 Tip:** You can use the same credentials for both plugins!
+### User Search Plugin Configuration
+
+Create: `%APPDATA%\Keypirinha\User\keypi_us.ini`
+
+```ini
+[main]
+# Your Jira Cloud instance URL (without trailing slash)
+jira_url = https://your-domain.atlassian.net
+
+# Your Atlassian account email
+atlassian_email = your-email@example.com
+
+# Your Atlassian API token (same as Jira/Confluence)
+atlassian_api_key = your-api-token-here
+
+# Keyword to trigger the plugin (default: us)
+keyword = us
+
+# Maximum history entries (default: 30)
+history_max_entries = 30
+```
+
+**💡 Tip:** You can use the same credentials for all three plugins!
 
 ---
 
@@ -277,6 +312,54 @@ type=page AND space=DOC AND title~"API"
 
 ---
 
+### User Search (US)
+
+#### Basic Workflow
+
+1. **Open Keypirinha** and type: `us`
+2. **Press Tab** to enter search mode
+3. **Enter name**: `Max`
+4. **Press Tab** to execute search (or Enter if no history matches)
+5. **Filter results** by typing more text
+6. **Select user**:
+   - **Press Enter** to open Teams Chat (default)
+   - **Press Tab** to see action menu (Teams Chat, Open Profile)
+
+#### User History (New in v1.1.0)
+
+Access your recently used users directly while typing!
+
+**Using history:**
+```
+us → max           # Shows history entries matching "max" + API search option
+us → #history      # Show all history entries (Tab to show)
+us → #history clear # Clear all history
+```
+
+**Features:**
+- History entries shown while typing (with [History] prefix)
+- "Tab/Enter: API-Suche starten" option always at bottom
+- Configurable max entries (default: 30)
+- Duplicates move to top (no duplicates in list)
+- Persistent across Keypirinha restarts
+
+#### Multi-Action Menu
+
+Each user result offers multiple actions via Tab:
+
+1. **Open Profile** - Open Jira user profile in browser
+2. **Teams Chat** - Open MS Teams chat with user (default action with Enter)
+
+**For users without email:**
+- Teams Chat shows: "nicht möglich - keine E-Mail"
+- Default action opens Profile instead
+
+**Usage:**
+- Select user → **Tab** → Action menu appears
+- Select action → **Enter** → Action executes
+
+---
+
 ## 🎨 Features in Detail
 
 ### Two-Phase Workflow
@@ -348,12 +431,12 @@ critical = priority = Highest AND status != "Done"
 
 ## 📋 Limits & Performance
 
-| Feature | JQE | CQE |
-|---------|-----|-----|
-| Max results per query | 50 | 50 |
-| Request timeout | 10s | 10s |
-| API calls while filtering | 0 | 0 |
-| Supported platforms | Windows | Windows |
+| Feature | JQE | CQE | US |
+|---------|-----|-----|-----|
+| Max results per query | 50 | 50 | 50 |
+| Request timeout | 10s | 10s | 10s |
+| API calls while filtering | 0 | 0 | 0 |
+| Supported platforms | Windows | Windows | Windows |
 
 ---
 
@@ -434,6 +517,23 @@ critical = priority = Highest AND status != "Done"
 - ✨ Configurable keyword
 - ✨ Open pages in browser
 - 🔗 Shared credentials with JQE
+
+### User Search v1.1.0 (2026-02-05)
+- ✨ **User History** - Recent users shown while typing
+- ✨ Filtered history with `[History]` prefix
+- ✨ `#history clear` to delete all history
+- 💾 Persistent history across restarts (JSON file)
+- ⚙️ Configurable max history entries (default: 30)
+- 🔄 Duplicate users move to top
+
+### User Search v1.0.0 (2026-02-05)
+- 🎉 Initial release
+- ✨ User search via Jira Cloud API
+- ✨ Two-Phase Filter Mode
+- ✨ Multi-Action Support (Teams Chat, Open Profile)
+- ✨ `#edit` shortcut to open config
+- 💬 Teams Chat integration via sip: protocol
+- 🔗 Shared credentials with JQE/CQE
 
 ---
 

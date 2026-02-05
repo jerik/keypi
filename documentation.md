@@ -2,7 +2,7 @@
 
 **Jira Plugin Version:** 1.5.1
 **Confluence Plugin Version:** 1.3.0
-**User Search Plugin Version:** 1.0.0
+**User Search Plugin Version:** 1.1.0
 
 ---
 
@@ -577,6 +577,9 @@ keyword = us
 jira_url = https://deine-firma.atlassian.net
 atlassian_email = deine@email.com
 atlassian_api_key = dein-api-token
+
+# Maximale Anzahl gespeicherter History-Einträge (Standard: 30)
+history_max_entries = 30
 ```
 
 **Hinweis:** Du kannst dieselben Credentials wie beim Jira-Plugin verwenden!
@@ -638,6 +641,39 @@ Jeder Nutzer-Eintrag bietet mehrere Aktionen:
 - 👤 Direkt zum Jira-Profil springen
 - 🔄 Tab+Enter für schnellen Profilzugriff
 
+### User History (Neu in v1.1.0)
+
+Greife schnell auf deine zuletzt verwendeten Nutzer zu!
+
+**History verwenden:**
+
+1. **History anzeigen**:
+   - Tippe: `us` → `#history` → Tab → Liste der letzten Nutzer erscheint
+
+2. **History filtern**:
+   - Tippe: `us` → `max` → Gefilterte History-Einträge erscheinen mit `[History]` Prefix
+   - Zusätzlich: `us: max` Option für API-Suche am Ende der Liste
+
+3. **History-Eintrag verwenden**:
+   - Wähle Nutzer aus History → **Enter** → Teams Chat öffnet sich (oder Profil bei fehlender E-Mail)
+   - Wähle Nutzer aus History → **Tab** → Action-Menü erscheint
+
+4. **History löschen**:
+   - Tippe: `us` → `#history clear` → `Enter` → Alle Einträge gelöscht
+
+**Workflow-Beispiel:**
+```
+us → max → [History] Max Mustermann erscheint → Enter → Teams Chat
+```
+
+**Features:**
+- 📜 Zuletzt verwendete Nutzer schnell wiederfinden
+- 🔍 History wird beim Tippen automatisch gefiltert
+- 🔄 Duplikate werden nach oben verschoben (keine doppelten Einträge)
+- 💾 Persistent über Keypirinha-Neustarts
+- ⚙️ Konfigurierbare Anzahl der Einträge (default: 30)
+- 🔗 API-Suche immer als Option verfügbar
+
 ### Config bearbeiten
 
 Tippe: `us` → `#edit` → `Enter` → Config-Datei wird geöffnet
@@ -684,6 +720,15 @@ Keypirinha-Konsole: `F2`
 
 ## 🔄 Changelog (US)
 
+### Version 1.1.0 (2026-02-05)
+- **Neu:** User History - Zuletzt verwendete Nutzer mit `#history` abrufen
+- **Neu:** Gefilterte History beim Tippen (z.B. `max` zeigt passende History-Einträge)
+- **Neu:** `#history clear` zum Löschen der kompletten History
+- **Feature:** Persistente History-Datei (überlebt Neustarts)
+- **Feature:** Konfigurierbare Anzahl History-Einträge (default: 30)
+- **Feature:** Duplikate werden automatisch nach oben verschoben
+- **UX:** API-Suche Option immer verfügbar unter History-Einträgen
+
 ### Version 1.0.0 (2026-02-05)
 - **Initial Release:** User Search Plugin
 - **Neu:** Nutzersuche via Jira Cloud API
@@ -699,4 +744,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.0.0
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0
