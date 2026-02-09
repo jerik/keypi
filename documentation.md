@@ -1,25 +1,26 @@
-# KeyPi - Atlassian Query Explorer Plugins
+# KeyPi - Keypirinha Plugin Collection
 
 **Jira Plugin Version:** 1.5.1
 **Confluence Plugin Version:** 1.3.0
 **User Search Plugin Version:** 1.1.0
+**Mindbox Plugin Version:** 1.0.0
 
 ---
 
 ## 📖 Übersicht
 
-KeyPi ist eine Sammlung von Keypirinha-Plugins für Atlassian Cloud-Produkte.
+KeyPi ist eine Sammlung von Keypirinha-Plugins für Produktivität und Atlassian Cloud-Produkte.
 
 **Verfügbare Plugins:**
 - **KeyPi-JQE**: Jira Query Explorer - Abfragen von Jira Cloud mittels JQL
 - **KeyPi-CQE**: Confluence Query Explorer - Abfragen von Confluence Cloud mittels CQL
 - **KeyPi-US**: User Search - Nutzersuche via Jira Cloud API
+- **KeyPi-Mindbox**: Mindbox - Lokale .mb Dateien durchsuchen und öffnen
 
 **Gemeinsame Funktionen:**
-- Queries aus Keypirinha ausführen
 - Ergebnisse als filterbare Liste
-- Direkte Browser-Integration
-- Geteilte Atlassian-Credentials
+- Direkte Browser-/Editor-Integration
+- #edit Shortcut zum Bearbeiten der Konfiguration
 
 ---
 
@@ -744,4 +745,105 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0
+---
+
+---
+
+# 📂 Mindbox (MB)
+
+## Funktionen
+- Lokale .mb Dateien aus einem konfigurierten Ordner durchsuchen
+- Ergebnisse als filterbare Liste mit Dateiname und Änderungsdatum
+- Dateien mit dem Standard-Editor öffnen
+
+---
+
+## 🚀 Installation (Mindbox)
+
+### Voraussetzungen
+- Keypirinha (https://keypirinha.com)
+- Ein Ordner mit .mb Dateien
+
+### Manuelle Installation
+1. Kopiere `keypi_mindbox/` nach:
+   - **Standard:** `%APPDATA%\Keypirinha\InstalledPackages\`
+   - **Portable:** `<Keypirinha>\portable\Profile\InstalledPackages\`
+
+---
+
+## ⚙️ Konfiguration (Mindbox)
+
+Erstelle: `%APPDATA%\Keypirinha\User\keypi_mindbox.ini` (bzw. Portable-Pfad)
+
+```ini
+[main]
+mindbox_folder = C:\Users\DeinName\Documents\Mindbox
+keyword = mb
+```
+
+Keypirinha neu starten: `Ctrl + Alt + R`
+
+---
+
+## 💻 Verwendung (Mindbox)
+
+### Basis-Workflow
+
+1. Tippe: `mb` → `Tab`
+2. Alle .mb Dateien werden angezeigt
+3. Weiter tippen → Liste wird gefiltert
+4. Datei auswählen → `Enter` → Datei wird im Standard-Editor geöffnet
+
+### Anzeige-Format
+
+Jeder Eintrag zeigt:
+- **Label:** Dateiname (ohne .mb Endung)
+- **Beschreibung:** Änderungsdatum + vollständiger Dateiname
+
+### Config bearbeiten
+
+Tippe: `mb` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+### Konfiguration
+
+Das Keyword ist konfigurierbar in `keypi_mindbox.ini`:
+
+```ini
+[main]
+keyword = mb  # Ändere dies nach Belieben (z.B. "mind")
+mindbox_folder = C:\Pfad\zu\deinen\Mindbox-Dateien
+```
+
+---
+
+## 🔧 Troubleshooting (Mindbox)
+
+### "Configuration missing"
+- Prüfe ob `keypi_mindbox.ini` im User-Ordner existiert
+- `mindbox_folder` Pfad ausgefüllt?
+- Keypirinha neugestartet?
+
+### "No .mb files found"
+- Prüfe ob der konfigurierte Ordner existiert
+- Prüfe ob .mb Dateien im Ordner vorhanden sind
+- Unterordner werden nicht durchsucht
+
+### Logs ansehen
+Keypirinha-Konsole: `F2`
+
+---
+
+## 🔄 Changelog (Mindbox)
+
+### Version 1.0.0 (2026-02-09)
+- **Initial Release:** Mindbox file browser plugin
+- **Neu:** .mb Dateien aus konfiguriertem Ordner durchsuchen
+- **Neu:** Filterbare Liste mit Dateiname + Änderungsdatum
+- **Neu:** Dateien mit Standard-Editor öffnen
+- **Neu:** #edit Shortcut zum Öffnen der Config
+- **Feature:** Konfigurierbares Keyword (default: "mb")
+- **Test:** 22 Unit-Tests für Folder-Scanning, Shortcuts und Config
+
+---
+
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0

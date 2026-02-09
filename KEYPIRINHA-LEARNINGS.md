@@ -545,7 +545,28 @@ self.create_item(
 
 ---
 
+## 📂 Local File-Based Plugins
+
+### No API Client Needed
+- ✅ **DO**: For local-only plugins, skip the `lib/` client entirely
+- ✅ **DO**: Use `os.listdir()` + `os.path.getmtime()` for file scanning
+- ✅ **DO**: Filter by extension with `entry.lower().endswith(".ext")`
+- ✅ **DO**: Use `time.strftime("%Y-%m-%d", time.localtime(mod_time))` for dates
+- 💡 **Lesson (MB v1.0.0)**: Not every plugin needs an API client - keep it simple
+
+### File Opening
+- ✅ **DO**: Use `kpu.shell_execute(file_path)` to open files with default editor
+- 💡 **Lesson (MB v1.0.0)**: Windows handles file association automatically
+
+### Folder Scanning Performance
+- ✅ **DO**: Scan folder in `on_suggest()` for fresh results every time
+- ⚠️ **Note**: For very large folders, consider caching with a timeout
+- 💡 **Lesson (MB v1.0.0)**: `os.listdir()` is fast enough for typical folder sizes
+
+---
+
 **Version History:**
+- **2026-02-09**: MB v1.0.0 release (Mindbox - local file browser, no API needed)
 - **2026-02-05**: US v1.1.0 release (User History - filtered history with API search option, args_hint=FORBIDDEN for shortcuts)
 - **2026-02-05**: US v1.0.0 release (User Search - uses JQE patterns: state machine, actions, shortcuts)
 - **2026-02-03**: CQE v1.3.0 update (Query History - same pattern as JQE, Virtual Query Mode)
