@@ -248,6 +248,102 @@ class TestMindboxShortcutHandling(unittest.TestCase):
         self.assertIn("update", result)
 
 
+class TestMindboxFileFiltering(unittest.TestCase):
+    """Test local filtering of .mb file entries"""
+
+    def setUp(self):
+        """Create test file list"""
+        self.files = [
+            {
+                "name": "daily-notes",
+                "filename": "daily-notes.mb",
+                "path": "/p/daily-notes.mb",
+                "modified": "2026-02-09",
+            },
+            {
+                "name": "project-ideas",
+                "filename": "project-ideas.mb",
+                "path": "/p/project-ideas.mb",
+                "modified": "2026-02-08",
+            },
+            {
+                "name": "todo",
+                "filename": "todo.mb",
+                "path": "/p/todo.mb",
+                "modified": "2026-02-07",
+            },
+            {
+                "name": "meeting-notes",
+                "filename": "meeting-notes.mb",
+                "path": "/p/meeting-notes.mb",
+                "modified": "2026-02-06",
+            },
+            {
+                "name": "ARCHIVE",
+                "filename": "ARCHIVE.MB",
+                "path": "/p/ARCHIVE.MB",
+                "modified": "2026-02-05",
+            },
+        ]
+
+    def _filter_files(self, files, filter_text):
+        """Filter file list by name/filename (mirrors plugin logic)"""
+        if not filter_text:
+            return files
+        ft = filter_text.lower()
+        return [
+            f for f in files if ft in f["name"].lower() or ft in f["filename"].lower()
+        ]
+
+    def test_empty_filter_returns_all(self):
+        """Test empty filter returns all files"""
+        result = self._filter_files(self.files, "")
+        self.assertEqual(len(result), 5)
+
+    def test_filter_by_name(self):
+        """Test filtering by file name"""
+        result = self._filter_files(self.files, "todo")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "todo")
+
+    def test_filter_by_partial_name(self):
+        """Test filtering by partial name"""
+        result = self._filter_files(self.files, "notes")
+        self.assertEqual(len(result), 2)
+        names = [f["name"] for f in result]
+        self.assertIn("daily-notes", names)
+        self.assertIn("meeting-notes", names)
+
+    def test_filter_case_insensitive(self):
+        """Test case-insensitive filtering"""
+        result = self._filter_files(self.files, "ARCHIVE")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "ARCHIVE")
+
+    def test_filter_case_insensitive_lowercase_input(self):
+        """Test lowercase input matches uppercase file"""
+        result = self._filter_files(self.files, "archive")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "ARCHIVE")
+
+    def test_filter_no_match(self):
+        """Test filter with no matching files"""
+        result = self._filter_files(self.files, "xyz123")
+        self.assertEqual(len(result), 0)
+
+    def test_filter_single_char(self):
+        """Test single character filter"""
+        result = self._filter_files(self.files, "d")
+        names = [f["name"] for f in result]
+        self.assertIn("daily-notes", names)
+        self.assertIn("project-ideas", names)
+
+    def test_filter_by_extension_in_filename(self):
+        """Test filtering matches against filename (including extension)"""
+        result = self._filter_files(self.files, ".mb")
+        self.assertEqual(len(result), 5)  # All files have .mb
+
+
 class TestMindboxConfig(unittest.TestCase):
     """Test configuration validation logic"""
 

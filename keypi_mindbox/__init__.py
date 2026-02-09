@@ -17,7 +17,7 @@ class Mindbox(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.2"
+    VERSION = "1.0.0-dev.3"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -92,13 +92,29 @@ class Mindbox(kp.Plugin):
         # Scan folder and build file list
         self._cached_files = self._scan_mindbox_folder()
 
-        if not self._cached_files:
+        # Filter files based on user input
+        filter_text = user_input.strip().lower()
+        if filter_text:
+            filtered = [
+                f
+                for f in self._cached_files
+                if filter_text in f["name"].lower()
+                or filter_text in f["filename"].lower()
+            ]
+        else:
+            filtered = self._cached_files
+
+        if not filtered:
+            if self._cached_files:
+                short_desc = f"No files match filter: {user_input.strip()}"
+            else:
+                short_desc = f"Folder: {self._mindbox_folder}"
             self.set_suggestions(
                 [
                     self.create_item(
                         category=kp.ItemCategory.KEYWORD,
                         label="No .mb files found",
-                        short_desc=f"Folder: {self._mindbox_folder}",
+                        short_desc=short_desc,
                         target="no_files",
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
                         hit_hint=kp.ItemHitHint.IGNORE,
@@ -107,8 +123,8 @@ class Mindbox(kp.Plugin):
             )
             return
 
-        # Build suggestions from file list
-        suggestions = self._build_file_suggestions(self._cached_files)
+        # Build suggestions from filtered file list
+        suggestions = self._build_file_suggestions(filtered)
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
     def on_execute(self, item, action):
