@@ -6,6 +6,7 @@ Browse and open local Mindbox text files from Keypirinha launcher
 import keypirinha as kp
 import keypirinha_util as kpu
 import os
+import subprocess
 import time
 
 
@@ -16,7 +17,7 @@ class Mindbox(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.1"
+    VERSION = "1.0.0-dev.2"
 
     # Constants
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -28,6 +29,7 @@ class Mindbox(kp.Plugin):
         # Plugin settings
         self._keyword = "mb"
         self._mindbox_folder = ""
+        self._update_script = ""
 
         # Cached file list
         self._cached_files = []
@@ -72,14 +74,15 @@ class Mindbox(kp.Plugin):
             )
             return
 
-        # Check if user pressed Tab/Enter on #edit
-        if (
-            len(items_chain) > 1
-            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
-            and items_chain[-1].target() == "edit_config"
-        ):
-            self._open_config_file()
-            return
+        # Check if user pressed Tab/Enter on a shortcut
+        if len(items_chain) > 1 and items_chain[-1].category() == self.ITEMCAT_SHORTCUT:
+            shortcut_target = items_chain[-1].target()
+            if shortcut_target == "edit_config":
+                self._open_config_file()
+                return
+            if shortcut_target == "run_update":
+                self._run_update_script()
+                return
 
         # Handle #edit shortcut input
         if user_input.strip().startswith("#"):
@@ -110,10 +113,14 @@ class Mindbox(kp.Plugin):
 
     def on_execute(self, item, action):
         """Execute action on selected item"""
-        # Handle #edit shortcut
-        if item.category() == self.ITEMCAT_SHORTCUT and item.target() == "edit_config":
-            self._open_config_file()
-            return
+        # Handle shortcuts
+        if item.category() == self.ITEMCAT_SHORTCUT:
+            if item.target() == "edit_config":
+                self._open_config_file()
+                return
+            if item.target() == "run_update":
+                self._run_update_script()
+                return
 
         # Handle file result - open with default editor
         if item.category() == self.ITEMCAT_RESULT:
@@ -136,6 +143,10 @@ class Mindbox(kp.Plugin):
 
         self._mindbox_folder = settings.get_stripped(
             "mindbox_folder", section="main", fallback=""
+        )
+
+        self._update_script = settings.get_stripped(
+            "update_script", section="main", fallback=""
         )
 
         old_keyword = self._keyword
@@ -240,12 +251,34 @@ class Mindbox(kp.Plugin):
                 )
             )
 
+        # Show #update if matches (also matches #up)
+        if shortcut_input == "" or "update".startswith(shortcut_input):
+            if self._update_script:
+                short_desc = (
+                    f"Run update script: {os.path.basename(self._update_script)}"
+                )
+            else:
+                short_desc = (
+                    "Update script not configured (set update_script in config)"
+                )
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#update",
+                    short_desc=short_desc,
+                    target="run_update",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                )
+            )
+
+        available = "#edit, #update"
         if not suggestions:
             suggestions.append(
                 self.create_item(
                     category=kp.ItemCategory.KEYWORD,
                     label=f"{self._keyword}: #{shortcut_input}",
-                    short_desc="Unknown shortcut. Available: #edit",
+                    short_desc=f"Unknown shortcut. Available: {available}",
                     target="no_shortcuts",
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE,
@@ -253,6 +286,30 @@ class Mindbox(kp.Plugin):
             )
 
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
+
+    def _run_update_script(self):
+        """Run the configured update script without showing a CMD window"""
+        if not self._update_script:
+            self.warn("Update script not configured")
+            return
+
+        if not os.path.isfile(self._update_script):
+            self.err(f"Update script not found: {self._update_script}")
+            return
+
+        self.info(f"Running update script: {self._update_script}")
+        try:
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0  # SW_HIDE
+            subprocess.Popen(
+                [self._update_script],
+                startupinfo=startupinfo,
+                cwd=os.path.dirname(self._update_script),
+            )
+            self.info("Update script started successfully")
+        except OSError as e:
+            self.err(f"Failed to run update script: {e}")
 
     def _open_config_file(self):
         """Open the configuration file"""

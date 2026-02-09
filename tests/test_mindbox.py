@@ -178,46 +178,74 @@ class TestMindboxScanFolder(unittest.TestCase):
 class TestMindboxShortcutHandling(unittest.TestCase):
     """Test shortcut input parsing for Mindbox plugin"""
 
-    def _parse_shortcut(self, user_input):
+    SHORTCUTS = ["edit", "update"]
+
+    def _match_shortcuts(self, user_input):
         """
-        Parse shortcut input and return matched shortcut name.
-        Returns "edit" if #edit matches, None otherwise.
+        Parse shortcut input and return list of matched shortcut names.
+        (Mirrors the logic from keypi_mindbox/__init__.py)
         """
         shortcut_input = user_input[1:].lower()  # Remove # and lowercase
 
-        if shortcut_input == "" or "edit".startswith(shortcut_input):
-            return "edit"
-        return None
+        matches = []
+        for shortcut in self.SHORTCUTS:
+            if shortcut_input == "" or shortcut.startswith(shortcut_input):
+                matches.append(shortcut)
+        return matches
 
-    def test_hash_only_shows_edit(self):
-        """Test that # alone suggests #edit"""
-        result = self._parse_shortcut("#")
-        self.assertEqual(result, "edit")
+    def test_hash_only_shows_all(self):
+        """Test that # alone suggests all shortcuts"""
+        result = self._match_shortcuts("#")
+        self.assertIn("edit", result)
+        self.assertIn("update", result)
 
     def test_hash_e_matches_edit(self):
         """Test that #e matches #edit"""
-        result = self._parse_shortcut("#e")
-        self.assertEqual(result, "edit")
+        result = self._match_shortcuts("#e")
+        self.assertIn("edit", result)
+        self.assertNotIn("update", result)
 
     def test_hash_ed_matches_edit(self):
         """Test that #ed matches #edit"""
-        result = self._parse_shortcut("#ed")
-        self.assertEqual(result, "edit")
+        result = self._match_shortcuts("#ed")
+        self.assertIn("edit", result)
 
     def test_hash_edit_matches_edit(self):
         """Test that #edit matches exactly"""
-        result = self._parse_shortcut("#edit")
-        self.assertEqual(result, "edit")
+        result = self._match_shortcuts("#edit")
+        self.assertIn("edit", result)
 
-    def test_hash_unknown_returns_none(self):
-        """Test that unknown shortcut returns None"""
-        result = self._parse_shortcut("#xyz")
-        self.assertIsNone(result)
+    def test_hash_u_matches_update(self):
+        """Test that #u matches #update"""
+        result = self._match_shortcuts("#u")
+        self.assertIn("update", result)
+        self.assertNotIn("edit", result)
+
+    def test_hash_up_matches_update(self):
+        """Test that #up matches #update"""
+        result = self._match_shortcuts("#up")
+        self.assertIn("update", result)
+
+    def test_hash_update_matches_exactly(self):
+        """Test that #update matches exactly"""
+        result = self._match_shortcuts("#update")
+        self.assertIn("update", result)
+        self.assertEqual(len(result), 1)
+
+    def test_hash_unknown_returns_empty(self):
+        """Test that unknown shortcut returns empty list"""
+        result = self._match_shortcuts("#xyz")
+        self.assertEqual(result, [])
 
     def test_shortcut_case_insensitive(self):
         """Test case-insensitive shortcut matching"""
-        result = self._parse_shortcut("#EDIT")
-        self.assertEqual(result, "edit")
+        result = self._match_shortcuts("#EDIT")
+        self.assertIn("edit", result)
+
+    def test_update_case_insensitive(self):
+        """Test case-insensitive update shortcut"""
+        result = self._match_shortcuts("#UPDATE")
+        self.assertIn("update", result)
 
 
 class TestMindboxConfig(unittest.TestCase):
@@ -243,6 +271,61 @@ class TestMindboxConfig(unittest.TestCase):
         """Test whitespace-only folder path (after strip) is not configured"""
         # Note: settings.get_stripped would strip whitespace before this check
         self.assertFalse(self._is_configured(""))
+
+
+class TestMindboxUpdateScript(unittest.TestCase):
+    """Test update script validation logic"""
+
+    def _validate_update_script(self, script_path):
+        """Validate update script path"""
+        if not script_path:
+            return "not_configured"
+        if not os.path.isfile(script_path):
+            return "not_found"
+        return "valid"
+
+    def test_empty_script_path(self):
+        """Test empty script path is not configured"""
+        self.assertEqual(self._validate_update_script(""), "not_configured")
+
+    def test_none_script_path(self):
+        """Test None script path is not configured"""
+        self.assertEqual(self._validate_update_script(None), "not_configured")
+
+    def test_nonexistent_script(self):
+        """Test nonexistent script path"""
+        self.assertEqual(
+            self._validate_update_script("/nonexistent/script.cmd"), "not_found"
+        )
+
+    def test_valid_script_path(self):
+        """Test valid script path"""
+        with tempfile.NamedTemporaryFile(suffix=".cmd", delete=False) as f:
+            f.write(b"@echo off")
+            script_path = f.name
+        try:
+            self.assertEqual(self._validate_update_script(script_path), "valid")
+        finally:
+            os.unlink(script_path)
+
+    def test_script_basename_extraction(self):
+        """Test that basename is correctly extracted for display"""
+        import ntpath
+
+        path = "C:\\Users\\test\\Scripts\\update-mindbox.cmd"
+        # Use ntpath for Windows-style paths (works cross-platform)
+        self.assertEqual(ntpath.basename(path), "update-mindbox.cmd")
+
+    def test_script_dirname_for_cwd(self):
+        """Test that dirname is correctly extracted for working directory"""
+        with tempfile.NamedTemporaryFile(suffix=".cmd", delete=False) as f:
+            f.write(b"@echo off")
+            script_path = f.name
+        try:
+            cwd = os.path.dirname(script_path)
+            self.assertTrue(os.path.isdir(cwd))
+        finally:
+            os.unlink(script_path)
 
 
 if __name__ == "__main__":
