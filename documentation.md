@@ -4,6 +4,7 @@
 **Confluence Plugin Version:** 1.3.0
 **User Search Plugin Version:** 1.1.0
 **Mindbox Plugin Version:** 1.0.0
+**PM-Buddy Plugin Version:** 1.0.0
 
 ---
 
@@ -16,6 +17,7 @@ KeyPi ist eine Sammlung von Keypirinha-Plugins für Produktivität und Atlassian
 - **KeyPi-CQE**: Confluence Query Explorer - Abfragen von Confluence Cloud mittels CQL
 - **KeyPi-US**: User Search - Nutzersuche via Jira Cloud API
 - **KeyPi-Mindbox**: Mindbox - Lokale .mb Dateien durchsuchen und öffnen
+- **KeyPi-PMB**: PM-Buddy - Knowledge-Graph durchsuchen (Jira + Confluence, offline)
 
 **Gemeinsame Funktionen:**
 - Ergebnisse als filterbare Liste
@@ -846,4 +848,149 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0
+---
+
+---
+
+# 🔍 PM-Buddy (PMB)
+
+## Funktionen
+- Jira-Tickets und Confluence-Seiten aus dem pm-buddy Knowledge-Graph durchsuchen
+- Direkter SQLite-Zugriff (kein pm-buddy-Package nötig)
+- Ergebnisse als filterbare Liste mit Ranking (Epics vor Stories, häufig besuchte zuerst)
+- **Multi-Action Support**: Tab-Menü mit mehreren Aktionen
+- Tickets/Seiten im Browser öffnen oder URLs kopieren
+
+---
+
+## 🚀 Installation (PMB)
+
+### Voraussetzungen
+- Keypirinha (https://keypirinha.com)
+- pm-buddy installiert und mindestens einmal synchronisiert (`pm-buddy sync`)
+
+### Manuelle Installation
+1. Kopiere `keypi_pmb/` nach:
+   - **Standard:** `%APPDATA%\Keypirinha\InstalledPackages\`
+   - **Portable:** `<Keypirinha>\portable\Profile\InstalledPackages\`
+
+---
+
+## ⚙️ Konfiguration (PMB)
+
+Erstelle: `%APPDATA%\Keypirinha\User\keypi_pmb.ini`
+
+```ini
+[main]
+keyword = pmb
+# Pfad zur pm-buddy Datenbank (Umgebungsvariablen werden aufgelöst)
+db_path = %USERPROFILE%\.pm-buddy\pm-buddy.db
+```
+
+Keypirinha neu starten: `Ctrl + Alt + R`
+
+---
+
+## 💻 Verwendung (PMB)
+
+### Basis-Workflow
+
+1. Tippe: `pmb` → `Tab`
+2. Suchbegriff eingeben: `steuer`
+3. `Enter` drücken → Suche wird ausgeführt
+4. Ergebnisse erscheinen
+
+### Filter-Modus
+
+Nach Ausführung der Suche kannst du die Ergebnisse filtern:
+
+1. Suchbegriff eingeben: `auth` → `Enter`
+2. Ergebnisse werden angezeigt
+3. Weiteren Text eingeben: `open` → filtert Ergebnisse lokal (nach Titel, Key, Status, Tags)
+4. Eintrag auswählen → `Enter` → öffnet im Browser
+
+**Vorteile:**
+- Keine zusätzlichen Datenbankabfragen beim Filtern
+- Schnelles Durchsuchen großer Ergebnislisten
+- Filter durchsucht: Titel, Ticket-Key, Status, Assignee, Tags
+
+### Anzeige-Format
+
+| Typ | Label | Beschreibung |
+|-----|-------|-------------|
+| Jira | `KEY-123: [epic][Open] Steuererklaerung` | `Assignee: Max | Fix: 1.2.0 | Tags: steuer, auth` |
+| Confluence | `[STEU] Fachkonzept Steuern` | `Type: confluence_page | Modified: 2026-01-15` |
+
+### Multi-Action Support
+
+Jeder Sucheintrag bietet mehrere Aktionen:
+
+**Standardaktion (Enter):**
+- URL im Browser öffnen
+
+**Action-Menü (Tab drücken):**
+1. **Open**: URL im Browser öffnen (Standard)
+2. **Copy URL**: URL in Zwischenablage kopieren
+
+### Suchalgorithmus
+
+Das Plugin verwendet den gleichen Algorithmus wie pm-buddy:
+- **FTS5-Volltext** auf Titel und Ticket-Key (Präfix-Suche)
+- **Tag-Suche** auf auto/manuelle Tags
+- **Typ-Boost**: Initiativen (4×) > Epics (3×) > Confluence-Seiten (1.5×) > Stories/Bugs/Tasks (1×) > Subtasks (0.5×)
+- **Visit-Boost**: Häufig im Browser besuchte Einträge werden bevorzugt
+- **Hidden-Filter**: Versteckte Einträge werden ausgeblendet
+
+### Shortcuts
+
+| Shortcut | Beschreibung |
+|----------|-------------|
+| `#edit` | Konfigurationsdatei öffnen |
+
+### Config bearbeiten
+
+Tippe: `pmb` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+---
+
+## 🔧 Troubleshooting (PMB)
+
+### "Configuration missing"
+- Prüfe ob `keypi_pmb.ini` im User-Ordner existiert
+- `db_path` ausgefüllt und Pfad korrekt?
+- Keypirinha neugestartet?
+
+### "No results found"
+- pm-buddy noch nie synchronisiert? → `pm-buddy sync` ausführen
+- Datenbankpfad korrekt? → `#edit` → prüfen
+
+### Logs ansehen
+Keypirinha-Konsole: `F2`
+
+---
+
+## 📋 Limits (PMB)
+
+- Max. 50 Ergebnisse pro Suche
+- Nur Lese-Zugriff (kein Schreiben in die Datenbank)
+
+---
+
+## 🔄 Changelog (PMB)
+
+### Version 1.0.0 (2026-02-19)
+- **Initial Release:** PM-Buddy Knowledge-Graph Plugin
+- **Neu:** Jira-Tickets und Confluence-Seiten durchsuchen
+- **Neu:** Two-Phase Filter Mode (Suche → Filter Results)
+- **Neu:** Multi-Action Support (Open, Copy URL)
+- **Neu:** #edit Shortcut zum Öffnen der Config
+- **Feature:** Typ-Boost Ranking (Epics/Initiativen bevorzugt)
+- **Feature:** Chrome Visit-Boost Ranking
+- **Feature:** Hidden-Nodes-Filter
+- **Feature:** Konfigurierbares Keyword (default: "pmb")
+- **Feature:** Umgebungsvariablen in db_path (z.B. %USERPROFILE%)
+- **Test:** 24 Unit-Tests für Suche, Ranking und Formatierung
+
+---
+
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0
