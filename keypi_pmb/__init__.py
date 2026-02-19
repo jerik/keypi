@@ -28,7 +28,7 @@ class PmBuddy(kp.Plugin):
     Actions:   Open (default), Copy URL
     """
 
-    VERSION = "1.0.0-dev.1"
+    VERSION = "1.0.0-dev.2"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -92,6 +92,20 @@ class PmBuddy(kp.Plugin):
         if len(items_chain) == 1 and self._current_mode == self.MODE_FILTER:
             self._reset_to_input_mode()
 
+        # --- Tab on execute_search item → run search (works in on_suggest!) ---
+        # Pattern from JQE: Tab adds item to items_chain, on_suggest is called,
+        # set_suggestions() works here (unlike in on_execute).
+        if (
+            self._current_mode == self.MODE_INPUT
+            and len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_QUERY
+            and items_chain[-1].target() == "execute_search"
+        ):
+            query = items_chain[-1].data_bag()
+            self.info(f"[pmb] Tab-triggered search: {query!r}")
+            self._execute_search(query)
+            return
+
         # --- Shortcut handling ---
         if user_input.strip().startswith("#"):
             self._handle_shortcut_input(user_input.strip())
@@ -120,6 +134,8 @@ class PmBuddy(kp.Plugin):
             )
             return
 
+        # Show hint item. args_hint=REQUIRED + hit_hint=KEEPALL ensures that
+        # Tab adds this item to items_chain and calls on_suggest (not on_execute).
         self.set_suggestions(
             [
                 self.create_item(
@@ -127,10 +143,11 @@ class PmBuddy(kp.Plugin):
                     label=f"{self._keyword}: {user_input}"
                     if user_input
                     else self._keyword,
-                    short_desc="Press Enter to search pm-buddy",
-                    target=f"search:{user_input}",
-                    args_hint=kp.ItemArgsHint.FORBIDDEN,
-                    hit_hint=kp.ItemHitHint.IGNORE,
+                    short_desc="Press Tab to search pm-buddy",
+                    target="execute_search",
+                    args_hint=kp.ItemArgsHint.REQUIRED,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                    data_bag=user_input,
                 )
             ]
         )
@@ -142,13 +159,13 @@ class PmBuddy(kp.Plugin):
                 self._open_config_file()
             return
 
-        # --- Search execution (from input mode) ---
-        if item.category() == self.ITEMCAT_QUERY and item.target().startswith(
-            "search:"
-        ):
-            query = item.target()[len("search:") :]
-            if query.strip():
-                self._execute_search(query.strip())
+        # --- Enter on execute_search (fallback: Launchbox closes, no results shown)
+        # Tab is the correct trigger (handled in on_suggest via items_chain).
+        # Enter lands here because on_execute cannot call set_suggestions() — it is ignored.
+        if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_search":
+            self.info(
+                "[pmb] Enter pressed on search item - use Tab to keep Launchbox open"
+            )
             return
 
         # --- Result item actions ---
