@@ -13,6 +13,8 @@ Database schema (pm-buddy):
   visits      - Chrome visit history per node
 """
 
+from __future__ import annotations
+
 import sqlite3
 from dataclasses import dataclass, field
 

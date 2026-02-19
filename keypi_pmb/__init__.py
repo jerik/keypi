@@ -3,6 +3,10 @@ Keypirinha Plugin: PM-Buddy (PMB)
 Search Jira tickets and Confluence pages from the pm-buddy knowledge graph.
 """
 
+from __future__ import (
+    annotations,
+)  # Python 3.8 compatibility: enables new-style type hints
+
 import json
 import os
 
