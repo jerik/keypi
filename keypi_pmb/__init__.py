@@ -1,6 +1,7 @@
 """
 Keypirinha Plugin: PM-Buddy (PMB)
 Search Jira tickets and Confluence pages from the pm-buddy knowledge graph.
+Also integrates local PM management files (PMM) for personal project notes.
 """
 
 from __future__ import (
@@ -13,7 +14,14 @@ import os
 import keypirinha as kp
 import keypirinha_util as kpu
 
-from .lib.pmb_client import PmbClient, PmbResult, format_label, format_short_desc
+from .lib.pmb_client import PmbClient, format_label, format_short_desc
+from .lib.pmm_client import (
+    filter_pmm,
+    format_pmm_label,
+    format_pmm_short_desc,
+    scan_folder,
+    search_pmm,
+)
 
 
 class PmBuddy(kp.Plugin):
@@ -21,37 +29,43 @@ class PmBuddy(kp.Plugin):
     PM-Buddy Plugin
 
     Two-phase workflow:
-      Phase 1 (Input):  User types search term, no DB calls
+      Phase 1 (Input):  User types search term, no DB/file calls
       Phase 2 (Filter): Results cached, local filtering only
 
-    Shortcuts: #edit
-    Actions:   Open (default), Copy URL
+    PMM results (local markdown files) always appear above DB results.
+
+    Shortcuts: #edit, #list
+    Actions:   Open (default), Copy URL (for DB results)
+               Open in editor (for PMM results)
     """
 
-    VERSION = "1.0.0-dev.2"
+    VERSION = "1.0.0-dev.3"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
-    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2
+    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2  # pm-buddy DB results
     ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 3
+    ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4  # Local PMM file results
 
     # Modes
     MODE_INPUT = "input"
     MODE_FILTER = "filter"
 
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
         self._keyword = "pmb"
         self._db_path = ""
-        self._client: PmbClient | None = None
+        self._pmm_folder = ""
+        self._client = None
         self._current_mode = self.MODE_INPUT
-        self._cached_results: list[PmbResult] = []
+        self._cached_results = []  # DB results (list[PmbResult])
+        self._cached_pmm = []  # PMM results from last search (list[PmmResult])
 
     # ------------------------------------------------------------------
     # Keypirinha lifecycle
     # ------------------------------------------------------------------
 
-    def on_start(self) -> None:
+    def on_start(self):
         self.info(f"PmBuddy v{self.VERSION} loaded")
         self.set_actions(
             self.ITEMCAT_RESULT,
@@ -70,13 +84,13 @@ class PmBuddy(kp.Plugin):
         )
         self._load_config()
 
-    def on_catalog(self) -> None:
+    def on_catalog(self):
         self.set_catalog(
             [
                 self.create_item(
                     category=self.ITEMCAT_QUERY,
                     label=self._keyword,
-                    short_desc="Search pm-buddy knowledge graph",
+                    short_desc="Search pm-buddy knowledge graph and PM files",
                     target=self._keyword,
                     args_hint=kp.ItemArgsHint.REQUIRED,
                     hit_hint=kp.ItemHitHint.NOARGS,
@@ -84,15 +98,50 @@ class PmBuddy(kp.Plugin):
             ]
         )
 
-    def on_suggest(self, user_input: str, items_chain: list) -> None:
+    def on_suggest(self, user_input, items_chain):
         if not items_chain or items_chain[0].category() != self.ITEMCAT_QUERY:
             return
 
-        # Re-invoked keyword while in filter mode → reset
+        # Re-invoked keyword while in filter mode → reset to input
         if len(items_chain) == 1 and self._current_mode == self.MODE_FILTER:
             self._reset_to_input_mode()
 
-        # --- Tab on execute_search item → run search (works in on_suggest!) ---
+        # --- #list mode: Tab on list_pmm shortcut → show all PMM files ---
+        # loop_on_suggest=True keeps this active while user types to filter
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
+            and items_chain[-1].target() == "list_pmm"
+        ):
+            filter_text = user_input.strip().lower()
+            all_pmm = scan_folder(self._pmm_folder)
+            filtered = filter_pmm(filter_text, all_pmm)
+            if filtered:
+                self.set_suggestions(
+                    self._build_pmm_suggestions(filtered), kp.Match.ANY, kp.Sort.NONE
+                )
+            else:
+                label = "No PM files found"
+                desc = (
+                    f"No files match: {user_input.strip()}"
+                    if user_input.strip()
+                    else f"Folder: {self._pmm_folder}"
+                )
+                self.set_suggestions(
+                    [
+                        self.create_item(
+                            category=kp.ItemCategory.KEYWORD,
+                            label=label,
+                            short_desc=desc,
+                            target="no_pmm",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
+                        )
+                    ]
+                )
+            return
+
+        # --- Tab on execute_search → run combined PMM + DB search ---
         # Pattern from JQE: Tab adds item to items_chain, on_suggest is called,
         # set_suggestions() works here (unlike in on_execute).
         if (
@@ -106,23 +155,39 @@ class PmBuddy(kp.Plugin):
             self._execute_search(query)
             return
 
-        # --- Shortcut handling ---
+        # --- Shortcut handling (#edit, #list, ...) ---
         if user_input.strip().startswith("#"):
             self._handle_shortcut_input(user_input.strip())
             return
 
-        # --- Filter mode: user is narrowing cached results ---
-        if self._current_mode == self.MODE_FILTER and self._cached_results:
+        # --- Filter mode: narrow cached results locally (no DB calls) ---
+        if self._current_mode == self.MODE_FILTER and (
+            self._cached_results or self._cached_pmm
+        ):
             filter_text = user_input.strip().lower()
-            filtered = self._apply_local_filter(self._cached_results, filter_text)
-            self.set_suggestions(
-                self._build_result_suggestions(filtered),
-                kp.Match.ANY,
-                kp.Sort.NONE,
-            )
+            filtered_pmm = filter_pmm(filter_text, self._cached_pmm)
+            filtered_db = self._apply_local_filter(self._cached_results, filter_text)
+            suggestions = self._build_pmm_suggestions(
+                filtered_pmm
+            ) + self._build_result_suggestions(filtered_db)
+            if suggestions:
+                self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
+            else:
+                self.set_suggestions(
+                    [
+                        self.create_item(
+                            category=kp.ItemCategory.KEYWORD,
+                            label="No results match filter",
+                            short_desc=f"Filter: {user_input.strip()}",
+                            target="no_filter_results",
+                            args_hint=kp.ItemArgsHint.FORBIDDEN,
+                            hit_hint=kp.ItemHitHint.IGNORE,
+                        )
+                    ]
+                )
             return
 
-        # --- Input mode: show hint while user types ---
+        # --- Input mode: show hint while user types (no calls) ---
         if not self._is_configured():
             self.set_suggestions(
                 [
@@ -152,7 +217,15 @@ class PmBuddy(kp.Plugin):
             ]
         )
 
-    def on_execute(self, item, action) -> None:
+    def on_execute(self, item, action):
+        # --- PMM file: open in default editor ---
+        if item.category() == self.ITEMCAT_PMM:
+            file_path = item.target()
+            self.info(f"[pmb] Opening PMM file: {file_path}")
+            kpu.shell_execute(file_path)
+            self._reset_to_input_mode()
+            return
+
         # --- Shortcuts ---
         if item.category() == self.ITEMCAT_SHORTCUT:
             if item.target() == "edit_config":
@@ -161,14 +234,14 @@ class PmBuddy(kp.Plugin):
 
         # --- Enter on execute_search (fallback: Launchbox closes, no results shown)
         # Tab is the correct trigger (handled in on_suggest via items_chain).
-        # Enter lands here because on_execute cannot call set_suggestions() — it is ignored.
+        # Enter lands here because on_execute cannot call set_suggestions() - it is ignored.
         if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_search":
             self.info(
                 "[pmb] Enter pressed on search item - use Tab to keep Launchbox open"
             )
             return
 
-        # --- Result item actions ---
+        # --- DB result actions ---
         if item.category() == self.ITEMCAT_RESULT:
             try:
                 data = json.loads(item.data_bag())
@@ -185,7 +258,7 @@ class PmBuddy(kp.Plugin):
                     kpu.set_clipboard(url)
                 # Don't reset — user may want to copy multiple URLs
 
-    def on_events(self, flags: int) -> None:
+    def on_events(self, flags):
         if flags & kp.Events.PACKCONFIG:
             self._load_config()
 
@@ -193,17 +266,22 @@ class PmBuddy(kp.Plugin):
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _load_config(self) -> None:
+    def _load_config(self):
         settings = self.load_settings()
         old_keyword = self._keyword
         self._keyword = settings.get_stripped("keyword", section="main", fallback="pmb")
         self._db_path = settings.get_stripped("db_path", section="main", fallback="")
+        self._pmm_folder = settings.get_stripped(
+            "pmm_folder", section="main", fallback=""
+        )
 
-        # Expand environment variables in path (e.g. %USERPROFILE%)
+        # Expand environment variables and ~ in paths
         if self._db_path:
             self._db_path = os.path.expandvars(os.path.expanduser(self._db_path))
+        if self._pmm_folder:
+            self._pmm_folder = os.path.expandvars(os.path.expanduser(self._pmm_folder))
 
-        # Re-open client if path changed
+        # Re-open DB client if path changed
         if self._client:
             self._client.close()
             self._client = None
@@ -218,36 +296,57 @@ class PmBuddy(kp.Plugin):
         else:
             self.warn("db_path not configured in keypi_pmb.ini")
 
+        if self._pmm_folder:
+            if os.path.isdir(self._pmm_folder):
+                self.info(f"PMM folder: {self._pmm_folder}")
+            else:
+                self.warn(f"PMM folder not found: {self._pmm_folder}")
+        else:
+            self.info("pmm_folder not configured - PMM features disabled")
+
         if old_keyword != self._keyword:
             self.on_catalog()
 
-    def _is_configured(self) -> bool:
-        return bool(self._db_path and self._client and self._client.is_open())
+    def _is_configured(self):
+        """At least DB or PMM folder must be configured."""
+        db_ok = bool(self._db_path and self._client and self._client.is_open())
+        pmm_ok = bool(self._pmm_folder and os.path.isdir(self._pmm_folder))
+        return db_ok or pmm_ok
 
-    def _reset_to_input_mode(self) -> None:
+    def _reset_to_input_mode(self):
         self._current_mode = self.MODE_INPUT
         self._cached_results = []
+        self._cached_pmm = []
 
-    def _execute_search(self, query: str) -> None:
-        """Execute search against pm-buddy DB and switch to filter mode."""
-        if not self._client or not self._client.is_open():
-            # Try re-opening in case DB was just created
-            if self._db_path:
-                self._client = PmbClient(self._db_path)
-                if not self._client.open():
-                    self.err(f"Cannot open pm-buddy DB: {self._db_path}")
-                    return
+    def _execute_search(self, query):
+        """Execute search against PMM folder and pm-buddy DB, switch to filter mode."""
+        # 1. PMM search (fast, local files — always first in results)
+        if self._pmm_folder and os.path.isdir(self._pmm_folder):
+            all_pmm = scan_folder(self._pmm_folder)
+            self._cached_pmm = search_pmm(query, all_pmm)
+        else:
+            self._cached_pmm = []
 
-        self.info(f"[pmb] Searching: {query!r}")
-        try:
-            self._cached_results = self._client.search(query, limit=50)
-        except Exception as e:
-            self.err(f"[pmb] Search error: {e}")
+        # 2. DB search
+        if self._client and self._client.is_open():
+            try:
+                self._cached_results = self._client.search(query, limit=50)
+            except Exception as e:
+                self.err(f"[pmb] DB search error: {e}")
+                self._cached_results = []
+        else:
             self._cached_results = []
 
         self._current_mode = self.MODE_FILTER
 
-        if not self._cached_results:
+        # Build combined suggestions: PMM always first
+        suggestions = self._build_pmm_suggestions(
+            self._cached_pmm
+        ) + self._build_result_suggestions(self._cached_results)
+
+        if suggestions:
+            self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
+        else:
             self.set_suggestions(
                 [
                     self.create_item(
@@ -260,18 +359,9 @@ class PmBuddy(kp.Plugin):
                     )
                 ]
             )
-            return
 
-        self.set_suggestions(
-            self._build_result_suggestions(self._cached_results),
-            kp.Match.ANY,
-            kp.Sort.NONE,
-        )
-
-    def _apply_local_filter(
-        self, results: list[PmbResult], filter_text: str
-    ) -> list[PmbResult]:
-        """Filter cached results by title, key, status, assignee."""
+    def _apply_local_filter(self, results, filter_text):
+        """Filter DB results by title, key, status, assignee, or tags."""
         if not filter_text:
             return results
         return [
@@ -284,8 +374,24 @@ class PmBuddy(kp.Plugin):
             or any(filter_text in tag.lower() for tag in r.tags)
         ]
 
-    def _build_result_suggestions(self, results: list[PmbResult]) -> list:
-        """Build Keypirinha suggestion items from search results."""
+    def _build_pmm_suggestions(self, results):
+        """Build Keypirinha suggestion items from PMM file results."""
+        suggestions = []
+        for result in results:
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_PMM,
+                    label=format_pmm_label(result),
+                    short_desc=format_pmm_short_desc(result),
+                    target=result.file_path,  # unique per file, used for shell_execute
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+        return suggestions
+
+    def _build_result_suggestions(self, results):
+        """Build Keypirinha suggestion items from pm-buddy DB results."""
         suggestions = []
         for i, result in enumerate(results):
             data_bag = json.dumps(
@@ -309,11 +415,12 @@ class PmBuddy(kp.Plugin):
             )
         return suggestions
 
-    def _handle_shortcut_input(self, user_input: str) -> None:
+    def _handle_shortcut_input(self, user_input):
         """Handle shortcut input (starts with #)."""
         shortcut = user_input[1:].lower()  # strip # and lowercase
         suggestions = []
 
+        # #edit — open config file
         if shortcut == "" or "edit".startswith(shortcut):
             suggestions.append(
                 self.create_item(
@@ -326,12 +433,27 @@ class PmBuddy(kp.Plugin):
                 )
             )
 
+        # #list — show all PMM files (only if pmm_folder is configured)
+        if self._pmm_folder and (shortcut == "" or "list".startswith(shortcut)):
+            suggestions.append(
+                self.create_item(
+                    category=self.ITEMCAT_SHORTCUT,
+                    label="#list",
+                    short_desc="Show all PM management files (type to filter)",
+                    target="list_pmm",
+                    args_hint=kp.ItemArgsHint.ACCEPTED,
+                    hit_hint=kp.ItemHitHint.KEEPALL,
+                    loop_on_suggest=True,
+                )
+            )
+
         if not suggestions:
+            available = "#edit, #list" if self._pmm_folder else "#edit"
             suggestions.append(
                 self.create_item(
                     category=kp.ItemCategory.KEYWORD,
                     label=f"{self._keyword}: #{shortcut}",
-                    short_desc="Unknown shortcut. Available: #edit",
+                    short_desc=f"Unknown shortcut. Available: {available}",
                     target="no_shortcut",
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE,
@@ -340,7 +462,7 @@ class PmBuddy(kp.Plugin):
 
         self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
-    def _open_config_file(self) -> None:
+    def _open_config_file(self):
         """Open the plugin configuration file."""
         plugin_dir = os.path.dirname(__file__)
         config_path = os.path.join(plugin_dir, "..", "..", "User", "keypi_pmb.ini")
