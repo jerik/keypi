@@ -398,7 +398,7 @@ class TestFilterPmm:
 class TestFormatPmmHelpers:
     def test_label_format(self):
         r = _make_result(key="FOO-123", title="Foobar implementieren")
-        assert format_pmm_label(r) == "[PMM] FOO-123: Foobar implementieren"
+        assert format_pmm_label(r) == "PPM: Foobar implementieren"
 
     def test_short_desc_with_epic_and_tags(self):
         r = _make_result(epic="FOO-2360", initiative=None, tags=["foo-imp", "bar-main"])

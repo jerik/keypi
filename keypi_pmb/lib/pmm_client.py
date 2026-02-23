@@ -167,9 +167,9 @@ def format_pmm_label(result: PmmResult) -> str:
     """
     Format a PMM result as a Keypirinha item label.
 
-    Example: [PMM] FOO-123: Foobar implementieren
+    Example: PPM: Foobar implementieren
     """
-    return f"[PMM] {result.key}: {result.title}"
+    return f"PPM: {result.title}"
 
 
 def format_pmm_short_desc(result: PmmResult) -> str:

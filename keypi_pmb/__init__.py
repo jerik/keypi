@@ -320,17 +320,34 @@ class PmBuddy(kp.Plugin):
 
     def _execute_search(self, query):
         """Execute search against PMM folder and pm-buddy DB, switch to filter mode."""
+        self.info(f"[pmb] === SEARCH START: query='{query}' ===")
+
         # 1. PMM search (fast, local files — always first in results)
+        self.info(f"[pmb] PMM folder configured: {self._pmm_folder!r}")
         if self._pmm_folder and os.path.isdir(self._pmm_folder):
+            self.info("[pmb] PMM folder exists, scanning...")
             all_pmm = scan_folder(self._pmm_folder)
+            self.info(f"[pmb] Scanned {len(all_pmm)} PMM files total")
             self._cached_pmm = search_pmm(query, all_pmm)
+            self.info(f"[pmb] PMM search matched {len(self._cached_pmm)} results")
+            for i, pmm in enumerate(self._cached_pmm, 1):
+                self.info(
+                    f"[pmb]   PMM[{i}]: {pmm.key} | title={pmm.title!r} | epic={pmm.epic!r} | tags={pmm.tags}"
+                )
         else:
+            self.info(
+                "[pmb] PMM folder not configured or doesn't exist, skipping PMM search"
+            )
             self._cached_pmm = []
 
         # 2. DB search
+        self.info(f"[pmb] DB client open: {self._client and self._client.is_open()}")
         if self._client and self._client.is_open():
             try:
                 self._cached_results = self._client.search(query, limit=50)
+                self.info(
+                    f"[pmb] DB search matched {len(self._cached_results)} results"
+                )
             except Exception as e:
                 self.err(f"[pmb] DB search error: {e}")
                 self._cached_results = []
@@ -340,13 +357,22 @@ class PmBuddy(kp.Plugin):
         self._current_mode = self.MODE_FILTER
 
         # Build combined suggestions: PMM always first
-        suggestions = self._build_pmm_suggestions(
-            self._cached_pmm
-        ) + self._build_result_suggestions(self._cached_results)
+        pmm_suggestions = self._build_pmm_suggestions(self._cached_pmm)
+        db_suggestions = self._build_result_suggestions(self._cached_results)
+        self.info(
+            f"[pmb] Built {len(pmm_suggestions)} PMM suggestions, {len(db_suggestions)} DB suggestions"
+        )
+        suggestions = pmm_suggestions + db_suggestions
 
         if suggestions:
+            self.info(
+                f"[pmb] Setting {len(suggestions)} suggestions (PMM first, then DB)"
+            )
+            for i, sug in enumerate(suggestions[:5], 1):  # Log first 5
+                self.info(f"[pmb]   Suggestion[{i}]: {sug.label()}")
             self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
         else:
+            self.info("[pmb] No results found")
             self.set_suggestions(
                 [
                     self.create_item(
@@ -359,6 +385,7 @@ class PmBuddy(kp.Plugin):
                     )
                 ]
             )
+        self.info("[pmb] === SEARCH END ===\n")
 
     def _apply_local_filter(self, results, filter_text):
         """Filter DB results by title, key, status, assignee, or tags."""
