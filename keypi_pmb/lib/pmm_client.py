@@ -104,7 +104,7 @@ def scan_folder(folder: str) -> list[PmmResult]:
 
 def search_pmm(query: str, results: list[PmmResult]) -> list[PmmResult]:
     """
-    Filter PMM results by query (all tokens must match title, key, or tags).
+    Filter PMM results by query (all tokens must match title, key, epic, initiative, or tags).
 
     Case-insensitive substring match. All space-separated tokens must match.
 
@@ -126,6 +126,10 @@ def search_pmm(query: str, results: list[PmmResult]) -> list[PmmResult]:
             + " "
             + result.key.lower()
             + " "
+            + (result.epic.lower() if result.epic else "")
+            + " "
+            + (result.initiative.lower() if result.initiative else "")
+            + " "
             + " ".join(result.tags).lower()
         )
         if all(token in searchable for token in tokens):
@@ -137,7 +141,7 @@ def filter_pmm(filter_text: str, results: list[PmmResult]) -> list[PmmResult]:
     """
     Filter cached PMM results by a single filter string (local filter mode).
 
-    Matches against title, key, and tags (case-insensitive substring).
+    Matches against title, key, epic, initiative, and tags (case-insensitive substring).
 
     Args:
         filter_text: Single filter string (already lowercased).
@@ -153,6 +157,8 @@ def filter_pmm(filter_text: str, results: list[PmmResult]) -> list[PmmResult]:
         for r in results
         if filter_text in r.title.lower()
         or filter_text in r.key.lower()
+        or (r.epic and filter_text in r.epic.lower())
+        or (r.initiative and filter_text in r.initiative.lower())
         or any(filter_text in tag.lower() for tag in r.tags)
     ]
 

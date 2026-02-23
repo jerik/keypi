@@ -298,6 +298,43 @@ class TestSearchPmm:
         results = search_pmm("   ", self._results())
         assert results == []
 
+    def test_matches_epic(self):
+        results = [
+            _make_result(key="FOO-123", title="Feature X", epic="FOO-2360", tags=[])
+        ]
+        matched = search_pmm("FOO-2360", results)
+        assert len(matched) == 1
+        assert matched[0].key == "FOO-123"
+
+    def test_matches_initiative(self):
+        results = [
+            _make_result(
+                key="BAR-456", title="Feature Y", initiative="Bar-2954", tags=[]
+            )
+        ]
+        matched = search_pmm("Bar-2954", results)
+        assert len(matched) == 1
+        assert matched[0].key == "BAR-456"
+
+    def test_epic_and_title_match(self):
+        results = [
+            _make_result(
+                key="FOO-123",
+                title="Foobar implementieren",
+                epic="FOO-2360",
+                tags=["foo-imp"],
+            )
+        ]
+        # Should match on epic
+        matched = search_pmm("FOO-2360", results)
+        assert len(matched) == 1
+        # Should match on title
+        matched = search_pmm("foobar", results)
+        assert len(matched) == 1
+        # Should match on tag
+        matched = search_pmm("foo-imp", results)
+        assert len(matched) == 1
+
 
 # ---------------------------------------------------------------------------
 # Tests: filter_pmm
@@ -333,6 +370,24 @@ class TestFilterPmm:
     def test_no_match_returns_empty(self):
         results = filter_pmm("nonexistent", self._results())
         assert results == []
+
+    def test_filters_by_epic(self):
+        results = [
+            _make_result(key="FOO-1", title="X", epic="FOO-2360", tags=[]),
+            _make_result(key="BAR-2", title="Y", epic=None, tags=[]),
+        ]
+        filtered = filter_pmm("foo-2360", results)
+        assert len(filtered) == 1
+        assert filtered[0].key == "FOO-1"
+
+    def test_filters_by_initiative(self):
+        results = [
+            _make_result(key="FOO-1", title="X", initiative="Bar-2954", tags=[]),
+            _make_result(key="BAR-2", title="Y", initiative=None, tags=[]),
+        ]
+        filtered = filter_pmm("bar-2954", results)
+        assert len(filtered) == 1
+        assert filtered[0].key == "FOO-1"
 
 
 # ---------------------------------------------------------------------------
