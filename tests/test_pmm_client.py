@@ -27,6 +27,7 @@ sys.modules.setdefault("keypirinha", kp_stub)
 sys.modules.setdefault("keypirinha_util", types.ModuleType("keypirinha_util"))
 
 from keypi_pmb.lib.pmm_client import (  # noqa: E402
+    FrontmatterField,
     PmmResult,
     _parse_frontmatter,
     filter_pmm,
@@ -87,6 +88,7 @@ def _make_result(**kwargs):
         tags=["foo-imp", "bar-main"],
         file_path="/some/path/FOO-123.md",
         modified="2026-01-15",
+        fields=[],
     )
     defaults.update(kwargs)
     return PmmResult(**defaults)
@@ -400,31 +402,132 @@ class TestFormatPmmHelpers:
         r = _make_result(key="FOO-123", title="Foobar implementieren")
         assert format_pmm_label(r) == "PPM: Foobar implementieren"
 
-    def test_short_desc_with_epic_and_tags(self):
-        r = _make_result(epic="FOO-2360", initiative=None, tags=["foo-imp", "bar-main"])
+    def test_short_desc_with_jira_key_fields_and_tags(self):
+        r = _make_result(
+            tags=["foo-imp", "bar-main"],
+            fields=[
+                FrontmatterField(name="epic", value="FOO-2360", kind="jira_key"),
+                FrontmatterField(name="initiative", value="BAR-2954", kind="jira_key"),
+            ],
+        )
         desc = format_pmm_short_desc(r)
-        assert "Epic: FOO-2360" in desc
+        assert "FOO-2360" in desc
+        assert "BAR-2954" in desc
         assert "foo-imp" in desc
         assert "bar-main" in desc
 
-    def test_short_desc_with_initiative(self):
-        r = _make_result(initiative="Bar-2954", epic=None, tags=[])
+    def test_short_desc_shows_jira_keys_without_label_prefix(self):
+        """Keys are shown directly (not as 'Epic: KEY'), relying on fields."""
+        r = _make_result(
+            tags=[],
+            fields=[FrontmatterField(name="umsetzung", value="INT-264", kind="jira_key")],
+        )
         desc = format_pmm_short_desc(r)
-        assert "Initiative: Bar-2954" in desc
+        assert "INT-264" in desc
 
     def test_short_desc_fallback_to_modified(self):
-        r = _make_result(epic=None, initiative=None, tags=[], modified="2026-01-15")
+        r = _make_result(epic=None, initiative=None, tags=[], fields=[], modified="2026-01-15")
         desc = format_pmm_short_desc(r)
         assert "2026-01-15" in desc
 
-    def test_short_desc_all_fields(self):
-        r = _make_result(
-            epic="FOO-2360",
-            initiative="Bar-2954",
-            tags=["foo-imp"],
-            modified="2026-01-15",
-        )
+    def test_short_desc_tags_only_when_no_jira_fields(self):
+        r = _make_result(epic=None, initiative=None, tags=["alpha"], fields=[])
         desc = format_pmm_short_desc(r)
-        assert "Epic: FOO-2360" in desc
-        assert "Initiative: Bar-2954" in desc
-        assert "foo-imp" in desc
+        assert "alpha" in desc
+        assert "Modified:" not in desc
+
+
+# ---------------------------------------------------------------------------
+# Tests: FrontmatterField + scan_folder fields population
+# ---------------------------------------------------------------------------
+
+
+_FULL_FM = """\
+---
+title: Foobar implementieren
+initiative: INT-264
+fachkonzept: FOO-2360
+umsetzung: BAR-6852
+tags: [foo, bar]
+Fälligkeit: 2026-02-25
+# ignored comment
+---
+"""
+
+
+class TestFrontmatterFields:
+    def test_scan_folder_populates_fields(self, tmp_path):
+        _write_md(tmp_path, "FOO-2360.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        assert len(results) == 1
+        fields = results[0].fields
+        assert len(fields) > 0
+
+    def test_jira_key_fields_classified_correctly(self, tmp_path):
+        _write_md(tmp_path, "FOO-2360.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        jira_fields = [f for f in results[0].fields if f.kind == "jira_key"]
+        jira_values = {f.value for f in jira_fields}
+        assert "INT-264" in jira_values
+        assert "FOO-2360" in jira_values
+        assert "BAR-6852" in jira_values
+
+    def test_iso_date_fields_classified_correctly(self, tmp_path):
+        _write_md(tmp_path, "FOO-2360.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        date_fields = [f for f in results[0].fields if f.kind == "iso_date"]
+        assert len(date_fields) == 1
+        assert date_fields[0].value == "2026-02-25"
+        assert "fälligkeit" in date_fields[0].name.lower()
+
+    def test_title_and_tags_not_in_fields(self, tmp_path):
+        _write_md(tmp_path, "FOO-1.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        field_names = {f.name for f in results[0].fields}
+        assert "title" not in field_names
+        assert "tags" not in field_names
+
+    def test_comments_not_in_fields(self, tmp_path):
+        _write_md(tmp_path, "FOO-1.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        field_names_lower = [f.name.lower() for f in results[0].fields]
+        assert not any(n.startswith("#") for n in field_names_lower)
+
+    def test_no_frontmatter_fields_empty(self, tmp_path):
+        _write_md(tmp_path, "FOO-1.md", _NO_FM)
+        results = scan_folder(str(tmp_path))
+        assert results[0].fields == []
+
+    def test_search_matches_field_value(self, tmp_path):
+        """search_pmm finds results by field values (e.g. linked Jira keys)."""
+        _write_md(tmp_path, "FOO-2360.md", _FULL_FM)
+        results = scan_folder(str(tmp_path))
+        matched = search_pmm("BAR-6852", results)
+        assert len(matched) == 1
+
+    def test_filter_matches_field_value(self, tmp_path):
+        """filter_pmm filters by field values."""
+        _write_md(tmp_path, "FOO-2360.md", _FULL_FM)
+        _write_md(tmp_path, "ZZZ-1.md", _MINIMAL_FM)
+        results = scan_folder(str(tmp_path))
+        filtered = filter_pmm("bar-6852", results)
+        assert len(filtered) == 1
+        assert filtered[0].key == "FOO-2360"
+
+    def test_alphanumeric_project_keys_classified_as_jira(self, tmp_path):
+        """FA235-123, VVA1-234 are valid Jira keys."""
+        content = "---\ntitle: Test\nepic: FA235-123\ninitiative: VVA1-234\n---\n"
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        jira_values = {f.value for f in results[0].fields if f.kind == "jira_key"}
+        assert "FA235-123" in jira_values
+        assert "VVA1-234" in jira_values
+
+    def test_non_jira_values_classified_as_text(self, tmp_path):
+        content = "---\ntitle: Test\nowner: john.doe\nteam: backend\n---\n"
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        text_fields = [f for f in results[0].fields if f.kind == "text"]
+        text_values = {f.value for f in text_fields}
+        assert "john.doe" in text_values
+        assert "backend" in text_values

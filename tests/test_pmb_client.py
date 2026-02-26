@@ -31,6 +31,7 @@ sys.modules.setdefault("keypirinha", kp_stub)
 sys.modules.setdefault("keypirinha_util", types.ModuleType("keypirinha_util"))
 
 from keypi_pmb.lib.pmb_client import (  # noqa: E402
+    NodeDetail,
     PmbClient,
     PmbResult,
     _fts5_sanitize,
@@ -45,9 +46,14 @@ from keypi_pmb.lib.pmb_client import (  # noqa: E402
 
 
 def _create_schema(conn: sqlite3.Connection) -> None:
-    """Create pm-buddy schema in the given connection."""
+    """Create pm-buddy schema in the given connection (including settings table)."""
     conn.executescript(
         """
+        CREATE TABLE IF NOT EXISTS settings (
+            key   TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS nodes (
             id TEXT PRIMARY KEY,
             type TEXT,
@@ -450,3 +456,113 @@ class TestFormatHelpers:
         r = self._make_confluence_result(updated=None, tags=[])
         desc = format_short_desc(r)
         assert "confluence_page" in desc
+
+
+# ---------------------------------------------------------------------------
+# Tests: get_node_by_key
+# ---------------------------------------------------------------------------
+
+
+class TestGetNodeByKey:
+    def test_returns_node_detail_for_existing_key(self, db_conn):
+        _insert_node(
+            db_conn,
+            id="jira:FOO-1",
+            type_="epic",
+            source="jira",
+            key="FOO-1",
+            title="Foobar Epic",
+            url="https://acme.atlassian.net/browse/FOO-1",
+            status="In Progress",
+            fix_version="2026.03",
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        detail = client.get_node_by_key("FOO-1")
+        assert detail is not None
+        assert isinstance(detail, NodeDetail)
+        assert detail.key == "FOO-1"
+        assert detail.node_type == "epic"
+        assert detail.title == "Foobar Epic"
+        assert detail.status == "In Progress"
+        assert detail.fix_version == "2026.03"
+        assert "FOO-1" in detail.url
+
+    def test_returns_none_for_missing_key(self, db_conn):
+        client = _make_client_with_conn(db_conn)
+        assert client.get_node_by_key("MISSING-999") is None
+
+    def test_only_returns_jira_source(self, db_conn):
+        """Confluence pages are not returned even if they have a key match."""
+        _insert_node(
+            db_conn,
+            id="confluence:FOO-1",
+            type_="confluence_page",
+            source="confluence",
+            key="FOO-1",
+            title="Some Confluence Page",
+            url="https://acme.atlassian.net/wiki/FOO-1",
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        assert client.get_node_by_key("FOO-1") is None
+
+    def test_optional_fields_none_when_missing(self, db_conn):
+        _insert_node(
+            db_conn,
+            id="jira:BAR-2",
+            type_="story",
+            source="jira",
+            key="BAR-2",
+            title="Simple Story",
+            url="https://acme.atlassian.net/browse/BAR-2",
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        detail = client.get_node_by_key("BAR-2")
+        assert detail is not None
+        assert detail.status is None
+        assert detail.fix_version is None
+
+    def test_returns_none_when_db_closed(self):
+        client = PmbClient(":memory:")
+        assert client.get_node_by_key("FOO-1") is None
+
+
+# ---------------------------------------------------------------------------
+# Tests: get_setting
+# ---------------------------------------------------------------------------
+
+
+class TestGetSetting:
+    def test_returns_value_for_existing_key(self, db_conn):
+        db_conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?)",
+            ("atlassian_url", "https://acme.atlassian.net"),
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        assert client.get_setting("atlassian_url") == "https://acme.atlassian.net"
+
+    def test_returns_none_for_missing_key(self, db_conn):
+        client = _make_client_with_conn(db_conn)
+        assert client.get_setting("nonexistent") is None
+
+    def test_returns_none_when_db_closed(self):
+        client = PmbClient(":memory:")
+        assert client.get_setting("atlassian_url") is None
+
+    def test_returns_none_when_settings_table_missing(self):
+        """Handles DBs without settings table (migration not applied)."""
+        conn = sqlite3.connect(":memory:")
+        conn.row_factory = sqlite3.Row
+        # Create schema WITHOUT settings table
+        conn.execute(
+            "CREATE TABLE nodes (id TEXT PRIMARY KEY, type TEXT, source TEXT, "
+            "key TEXT, title TEXT, url TEXT, status TEXT, assignee TEXT, "
+            "fix_version TEXT, space_key TEXT, updated TEXT, hidden INTEGER DEFAULT 0)"
+        )
+        conn.commit()
+        client = _make_client_with_conn(conn)
+        assert client.get_setting("atlassian_url") is None
+        conn.close()

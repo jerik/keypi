@@ -7,14 +7,20 @@ PM management notes. Files are named <TICKET-KEY>.md (e.g. FOO-123.md).
 Frontmatter format (between --- delimiters):
     ---
     title: Foobar implementieren
-    Epic: FOO-2360
-    Initiative: Bar-2954
+    initiative: INT-264
+    fachkonzept: FOO-2360
+    umsetzung: BAR-6852
     tags: [foo-imp, bar-main]
+    Fälligkeit: 2026-02-25
+    # This is a comment and will be ignored
     ---
 
-The ticket key is derived from the filename (without extension).
-Tags are always in [foo, bar] notation.
-Files without valid frontmatter are skipped silently.
+Convention over configuration:
+    - title  → display label
+    - tags   → tag list (always list[str])
+    - any field whose value exactly matches a Jira key pattern → drill-down ticket
+    - any field whose value matches an ISO date pattern → date info (copy to clipboard)
+    - lines starting with # are comments and are ignored
 """
 
 from __future__ import annotations
@@ -22,7 +28,7 @@ from __future__ import annotations
 import os
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # Regex to extract frontmatter block between --- delimiters
 _FM_BLOCK_RE = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---", re.DOTALL)
@@ -30,18 +36,36 @@ _FM_BLOCK_RE = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---", re.DOTALL)
 # Regex to extract tag list content from [foo-imp, bar-main]
 _TAGS_LIST_RE = re.compile(r"\[([^\]]*)\]")
 
+# Exact Jira key: PROJECT-123 (alphanumeric project keys supported)
+_JIRA_KEY_EXACT = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
+
+# ISO date: YYYY-MM-DD
+_ISO_DATE_EXACT = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+@dataclass
+class FrontmatterField:
+    """A single frontmatter field (not title/tags)."""
+
+    name: str   # Field name as written in the file (original case)
+    value: str  # Field value (raw string)
+    kind: str   # "jira_key" | "iso_date" | "text"
+
 
 @dataclass
 class PmmResult:
     """A PM management file with parsed frontmatter."""
 
-    key: str  # Ticket key derived from filename (e.g. FOO-123)
-    title: str  # From frontmatter 'title' field
-    epic: str | None  # From frontmatter 'Epic' field
-    initiative: str | None  # From frontmatter 'Initiative' field
-    tags: list[str]  # From frontmatter 'tags' field
-    file_path: str  # Absolute path to the .md file
-    modified: str  # Last modified date (YYYY-MM-DD)
+    key: str               # Ticket key derived from filename (e.g. FOO-123)
+    title: str             # From frontmatter 'title' field
+    epic: str | None       # From frontmatter 'epic' field (legacy compat)
+    initiative: str | None # From frontmatter 'initiative' field (legacy compat)
+    tags: list[str]        # From frontmatter 'tags' field
+    file_path: str         # Absolute path to the .md file
+    modified: str          # Last modified date (YYYY-MM-DD)
+    fields: list[FrontmatterField] = field(default_factory=list)
+    # All non-title, non-tags fields with kind classification.
+    # Used for drill-down expansion in keypi_pmb.
 
 
 def scan_folder(folder: str) -> list[PmmResult]:
@@ -86,6 +110,22 @@ def scan_folder(folder: str) -> list[PmmResult]:
         mod_time = os.path.getmtime(file_path)
         modified = time.strftime("%Y-%m-%d", time.localtime(mod_time))
 
+        # Build typed field list (all fields except title + tags)
+        _SKIP = {"title", "tags"}
+        fields = []
+        for k, v in fm.items():
+            if k in _SKIP:
+                continue
+            if not isinstance(v, str):
+                continue
+            if _JIRA_KEY_EXACT.match(v):
+                kind = "jira_key"
+            elif _ISO_DATE_EXACT.match(v):
+                kind = "iso_date"
+            else:
+                kind = "text"
+            fields.append(FrontmatterField(name=k, value=v, kind=kind))
+
         results.append(
             PmmResult(
                 key=key,
@@ -95,6 +135,7 @@ def scan_folder(folder: str) -> list[PmmResult]:
                 tags=fm.get("tags", []),
                 file_path=file_path,
                 modified=modified,
+                fields=fields,
             )
         )
 
@@ -104,9 +145,10 @@ def scan_folder(folder: str) -> list[PmmResult]:
 
 def search_pmm(query: str, results: list[PmmResult]) -> list[PmmResult]:
     """
-    Filter PMM results by query (all tokens must match title, key, epic, initiative, or tags).
+    Filter PMM results by query (all tokens must match).
 
-    Case-insensitive substring match. All space-separated tokens must match.
+    Matches against title, key, epic, initiative, tags, and all Jira key
+    field values. Case-insensitive substring match.
 
     Args:
         query: Search terms (space-separated).
@@ -121,17 +163,7 @@ def search_pmm(query: str, results: list[PmmResult]) -> list[PmmResult]:
     tokens = query.lower().split()
     matched = []
     for result in results:
-        searchable = (
-            result.title.lower()
-            + " "
-            + result.key.lower()
-            + " "
-            + (result.epic.lower() if result.epic else "")
-            + " "
-            + (result.initiative.lower() if result.initiative else "")
-            + " "
-            + " ".join(result.tags).lower()
-        )
+        searchable = _build_searchable(result)
         if all(token in searchable for token in tokens):
             matched.append(result)
     return matched
@@ -140,8 +172,6 @@ def search_pmm(query: str, results: list[PmmResult]) -> list[PmmResult]:
 def filter_pmm(filter_text: str, results: list[PmmResult]) -> list[PmmResult]:
     """
     Filter cached PMM results by a single filter string (local filter mode).
-
-    Matches against title, key, epic, initiative, and tags (case-insensitive substring).
 
     Args:
         filter_text: Single filter string (already lowercased).
@@ -152,15 +182,7 @@ def filter_pmm(filter_text: str, results: list[PmmResult]) -> list[PmmResult]:
     """
     if not filter_text:
         return results
-    return [
-        r
-        for r in results
-        if filter_text in r.title.lower()
-        or filter_text in r.key.lower()
-        or (r.epic and filter_text in r.epic.lower())
-        or (r.initiative and filter_text in r.initiative.lower())
-        or any(filter_text in tag.lower() for tag in r.tags)
-    ]
+    return [r for r in results if filter_text in _build_searchable(r)]
 
 
 def format_pmm_label(result: PmmResult) -> str:
@@ -176,17 +198,22 @@ def format_pmm_short_desc(result: PmmResult) -> str:
     """
     Format a PMM result as a Keypirinha item short description.
 
-    Example: Epic: FOO-2360 | Tags: foo-imp, bar-main
+    Shows all linked Jira keys, then tags, falling back to modified date.
+
+    Example: INT-264, FOO-2360 | Tags: foo-imp, bar-main
     """
     parts = []
-    if result.epic:
-        parts.append(f"Epic: {result.epic}")
-    if result.initiative:
-        parts.append(f"Initiative: {result.initiative}")
+
+    jira_keys = [f.value for f in result.fields if f.kind == "jira_key"]
+    if jira_keys:
+        parts.append(", ".join(jira_keys))
+
     if result.tags:
         parts.append(f"Tags: {', '.join(result.tags)}")
+
     if not parts:
         parts.append(f"Modified: {result.modified}")
+
     return " | ".join(parts)
 
 
@@ -195,12 +222,28 @@ def format_pmm_short_desc(result: PmmResult) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _build_searchable(result: PmmResult) -> str:
+    """Build lowercase searchable string for a PmmResult."""
+    parts = [
+        result.title.lower(),
+        result.key.lower(),
+        (result.epic.lower() if result.epic else ""),
+        (result.initiative.lower() if result.initiative else ""),
+        " ".join(result.tags).lower(),
+    ]
+    # Include all field values in search
+    for f in result.fields:
+        parts.append(f.value.lower())
+    return " ".join(parts)
+
+
 def _parse_frontmatter(content: str) -> dict:
     """
     Parse YAML-style frontmatter from markdown content.
 
     Handles simple key: value pairs and tags: [foo, bar] notation.
     Keys are lowercased for case-insensitive lookup.
+    Lines starting with # are treated as comments and ignored.
 
     Returns:
         Dict with parsed fields. 'tags' is always a list[str].

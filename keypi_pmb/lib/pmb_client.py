@@ -38,6 +38,18 @@ _FTS5_SPECIAL = frozenset(r'-."^():/+')
 
 
 @dataclass
+class NodeDetail:
+    """Details for a single Jira ticket, used for PMM drill-down."""
+
+    key: str
+    node_type: str       # epic, story, bug, task, …
+    title: str
+    status: str | None
+    fix_version: str | None
+    url: str
+
+
+@dataclass
 class PmbResult:
     """A single search result from the pm-buddy database."""
 
@@ -98,6 +110,57 @@ class PmbClient:
     def is_open(self) -> bool:
         """Return True if the database connection is active."""
         return self._conn is not None
+
+    def get_node_by_key(self, key: str) -> NodeDetail | None:
+        """
+        Look up a single Jira ticket by its key.
+
+        Args:
+            key: Jira ticket key (e.g. "FOO-123").
+
+        Returns:
+            NodeDetail if found, None otherwise.
+        """
+        if not self._conn:
+            return None
+        try:
+            row = self._conn.execute(
+                "SELECT key, type, title, status, fix_version, url "
+                "FROM nodes WHERE key = ? AND source = 'jira'",
+                (key,),
+            ).fetchone()
+            if not row:
+                return None
+            return NodeDetail(
+                key=row["key"] or key,
+                node_type=row["type"] or "",
+                title=row["title"] or "",
+                status=row["status"],
+                fix_version=row["fix_version"],
+                url=row["url"] or "",
+            )
+        except Exception:
+            return None
+
+    def get_setting(self, key: str) -> str | None:
+        """
+        Read a global setting from the pm-buddy settings table.
+
+        Args:
+            key: Setting key (e.g. "atlassian_url").
+
+        Returns:
+            Value string, or None if not found / table missing.
+        """
+        if not self._conn:
+            return None
+        try:
+            row = self._conn.execute(
+                "SELECT value FROM settings WHERE key = ?", (key,)
+            ).fetchone()
+            return row["value"] if row else None
+        except Exception:
+            return None  # table may not exist (migration not yet applied)
 
     def search(self, query: str, limit: int = 50) -> list[PmbResult]:
         """

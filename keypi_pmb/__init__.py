@@ -16,6 +16,9 @@ import keypirinha_util as kpu
 
 from .lib.pmb_client import PmbClient, format_label, format_short_desc
 from .lib.pmm_client import (
+    _parse_frontmatter,
+    _JIRA_KEY_EXACT,
+    _ISO_DATE_EXACT,
     filter_pmm,
     format_pmm_label,
     format_pmm_short_desc,
@@ -37,15 +40,18 @@ class PmBuddy(kp.Plugin):
     Shortcuts: #edit, #list
     Actions:   Open (default), Copy URL (for DB results)
                Open in editor (for PMM results)
+               Tab on PMM result → drill-down to linked Jira tickets / dates
     """
 
-    VERSION = "1.0.0-dev.3"
+    VERSION = "1.0.0-dev.4"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
-    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2  # pm-buddy DB results
+    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2      # pm-buddy DB results
     ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 3
-    ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4  # Local PMM file results
+    ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4         # Local PMM file results
+    ITEMCAT_PMM_DETAIL = kp.ItemCategory.USER_BASE + 5  # Drill-down: Jira tickets
+    ITEMCAT_PMM_DATE = kp.ItemCategory.USER_BASE + 6    # Drill-down: ISO date fields
 
     # Modes
     MODE_INPUT = "input"
@@ -59,7 +65,7 @@ class PmBuddy(kp.Plugin):
         self._client = None
         self._current_mode = self.MODE_INPUT
         self._cached_results = []  # DB results (list[PmbResult])
-        self._cached_pmm = []  # PMM results from last search (list[PmmResult])
+        self._cached_pmm = []      # PMM results from last search (list[PmmResult])
 
     # ------------------------------------------------------------------
     # Keypirinha lifecycle
@@ -79,6 +85,31 @@ class PmBuddy(kp.Plugin):
                     name="copy_url",
                     label="Copy URL",
                     short_desc="Copy URL to clipboard",
+                ),
+            ],
+        )
+        self.set_actions(
+            self.ITEMCAT_PMM_DETAIL,
+            [
+                self.create_action(
+                    name="open",
+                    label="Open in Jira",
+                    short_desc="Open ticket in browser",
+                ),
+                self.create_action(
+                    name="copy_url",
+                    label="Copy URL",
+                    short_desc="Copy Jira URL to clipboard",
+                ),
+            ],
+        )
+        self.set_actions(
+            self.ITEMCAT_PMM_DATE,
+            [
+                self.create_action(
+                    name="copy_date",
+                    label="Copy date",
+                    short_desc="Copy date to clipboard",
                 ),
             ],
         )
@@ -106,14 +137,20 @@ class PmBuddy(kp.Plugin):
         if len(items_chain) == 1 and self._current_mode == self.MODE_FILTER:
             self._reset_to_input_mode()
 
+        # --- Tab on PMM item → expand to linked Jira tickets / date fields ---
+        if (
+            len(items_chain) > 1
+            and items_chain[-1].category() == self.ITEMCAT_PMM
+        ):
+            self._expand_pmm_item(items_chain[-1])
+            return
+
         # --- #list mode: Tab on list_pmm shortcut → show all PMM files ---
-        # loop_on_suggest=True keeps this active while user types to filter
         if (
             len(items_chain) > 1
             and items_chain[-1].category() == self.ITEMCAT_SHORTCUT
             and items_chain[-1].target() == "list_pmm"
         ):
-            # Check if pmm_folder is properly configured
             if not self._pmm_folder:
                 self.set_suggestions(
                     [
@@ -164,8 +201,6 @@ class PmBuddy(kp.Plugin):
             return
 
         # --- Tab on execute_search → run combined PMM + DB search ---
-        # Pattern from JQE: Tab adds item to items_chain, on_suggest is called,
-        # set_suggestions() works here (unlike in on_execute).
         if (
             self._current_mode == self.MODE_INPUT
             and len(items_chain) > 1
@@ -220,8 +255,6 @@ class PmBuddy(kp.Plugin):
             )
             return
 
-        # Show hint item. args_hint=REQUIRED + hit_hint=KEEPALL ensures that
-        # Tab adds this item to items_chain and calls on_suggest (not on_execute).
         self.set_suggestions(
             [
                 self.create_item(
@@ -239,11 +272,31 @@ class PmBuddy(kp.Plugin):
         )
 
     def on_execute(self, item, action):
-        # --- PMM file: open in default editor ---
+        # --- PMM file: open in default editor (Enter) ---
         if item.category() == self.ITEMCAT_PMM:
             file_path = item.target()
             self.info(f"[pmb] Opening PMM file: {file_path}")
             kpu.shell_execute(file_path)
+            self._reset_to_input_mode()
+            return
+
+        # --- PMM drill-down: Jira ticket ---
+        if item.category() == self.ITEMCAT_PMM_DETAIL:
+            url = item.data_bag()
+            if not action or action.name() == "open":
+                if url:
+                    kpu.shell_execute(url)
+                self._reset_to_input_mode()
+            elif action.name() == "copy_url":
+                if url:
+                    kpu.set_clipboard(url)
+            return
+
+        # --- PMM drill-down: ISO date field ---
+        if item.category() == self.ITEMCAT_PMM_DATE:
+            date_value = item.data_bag()
+            if date_value:
+                kpu.set_clipboard(date_value)
             self._reset_to_input_mode()
             return
 
@@ -253,9 +306,7 @@ class PmBuddy(kp.Plugin):
                 self._open_config_file()
             return
 
-        # --- Enter on execute_search (fallback: Launchbox closes, no results shown)
-        # Tab is the correct trigger (handled in on_suggest via items_chain).
-        # Enter lands here because on_execute cannot call set_suggestions() - it is ignored.
+        # --- Enter on execute_search (fallback) ---
         if item.category() == self.ITEMCAT_QUERY and item.target() == "execute_search":
             self.info(
                 "[pmb] Enter pressed on search item - use Tab to keep Launchbox open"
@@ -277,7 +328,6 @@ class PmBuddy(kp.Plugin):
             elif action.name() == "copy_url":
                 if url:
                     kpu.set_clipboard(url)
-                # Don't reset — user may want to copy multiple URLs
 
     def on_events(self, flags):
         if flags & kp.Events.PACKCONFIG:
@@ -296,13 +346,11 @@ class PmBuddy(kp.Plugin):
             "pmm_folder", section="main", fallback=""
         )
 
-        # Expand environment variables and ~ in paths
         if self._db_path:
             self._db_path = os.path.expandvars(os.path.expanduser(self._db_path))
         if self._pmm_folder:
             self._pmm_folder = os.path.expandvars(os.path.expanduser(self._pmm_folder))
 
-        # Re-open DB client if path changed
         if self._client:
             self._client.close()
             self._client = None
@@ -341,14 +389,12 @@ class PmBuddy(kp.Plugin):
 
     def _execute_search(self, query):
         """Execute search against PMM folder and pm-buddy DB, switch to filter mode."""
-        # 1. PMM search (fast, local files — always first in results)
         if self._pmm_folder and os.path.isdir(self._pmm_folder):
             all_pmm = scan_folder(self._pmm_folder)
             self._cached_pmm = search_pmm(query, all_pmm)
         else:
             self._cached_pmm = []
 
-        # 2. DB search
         if self._client and self._client.is_open():
             try:
                 self._cached_results = self._client.search(query, limit=50)
@@ -360,7 +406,6 @@ class PmBuddy(kp.Plugin):
 
         self._current_mode = self.MODE_FILTER
 
-        # Build combined suggestions: PMM always first
         suggestions = self._build_pmm_suggestions(
             self._cached_pmm
         ) + self._build_result_suggestions(self._cached_results)
@@ -380,6 +425,112 @@ class PmBuddy(kp.Plugin):
                     )
                 ]
             )
+
+    def _expand_pmm_item(self, pmm_item):
+        """
+        Expand a PMM file item into its linked Jira tickets and date fields.
+
+        Called when user presses Tab on a PMM result. Reads the file fresh,
+        parses frontmatter, and builds sub-items:
+          - Jira key fields → ITEMCAT_PMM_DETAIL  (open URL / copy URL)
+          - ISO date fields → ITEMCAT_PMM_DATE    (copy date to clipboard)
+        """
+        file_path = pmm_item.target()
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            self.warn(f"[pmb] Cannot read PMM file {file_path}: {e}")
+            self.set_suggestions(
+                [
+                    self.create_error_item(
+                        label="Cannot read file",
+                        short_desc=str(e),
+                    )
+                ]
+            )
+            return
+
+        fm = _parse_frontmatter(content)
+
+        # Get atlassian_url for URL fallback when ticket not in DB
+        atlassian_url = None
+        if self._client and self._client.is_open():
+            atlassian_url = self._client.get_setting("atlassian_url")
+
+        suggestions = []
+        skip_fields = {"title", "tags"}
+
+        for field_name, field_value in fm.items():
+            if field_name in skip_fields or not isinstance(field_value, str):
+                continue
+
+            if _JIRA_KEY_EXACT.match(field_value):
+                # Jira key → look up details in DB
+                detail = None
+                if self._client and self._client.is_open():
+                    detail = self._client.get_node_by_key(field_value)
+
+                if detail:
+                    # Full details from DB
+                    type_str = f"[{detail.node_type}]" if detail.node_type else ""
+                    status_str = f"[{detail.status}]" if detail.status else ""
+                    title_str = detail.title[:50]
+                    label = f"{type_str} {detail.key}: {title_str} {status_str}".strip()
+                    desc_parts = [field_name]
+                    if detail.fix_version:
+                        desc_parts.append(f"fix: {detail.fix_version}")
+                    short_desc = " | ".join(desc_parts)
+                    url = detail.url
+                else:
+                    # Not in DB — show key only, construct fallback URL
+                    label = field_value
+                    short_desc = field_name
+                    if atlassian_url:
+                        url = f"{atlassian_url.rstrip('/')}/browse/{field_value}"
+                    else:
+                        url = ""
+
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_PMM_DETAIL,
+                        label=label,
+                        short_desc=short_desc,
+                        target=field_value,
+                        data_bag=url,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+
+            elif _ISO_DATE_EXACT.match(field_value):
+                # ISO date → copy to clipboard
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_PMM_DATE,
+                        label=f"{field_name}: {field_value}",
+                        short_desc="Press Enter to copy date to clipboard",
+                        target=field_value,
+                        data_bag=field_value,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+
+        if not suggestions:
+            suggestions.append(
+                self.create_item(
+                    category=kp.ItemCategory.KEYWORD,
+                    label="No linked tickets or dates in frontmatter",
+                    short_desc=f"File: {os.path.basename(file_path)}",
+                    target="no_detail",
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE,
+                )
+            )
+
+        self.set_suggestions(suggestions, kp.Match.ANY, kp.Sort.NONE)
 
     def _apply_local_filter(self, results, filter_text):
         """Filter DB results by title, key, status, assignee, or tags."""
@@ -404,9 +555,9 @@ class PmBuddy(kp.Plugin):
                     category=self.ITEMCAT_PMM,
                     label=format_pmm_label(result),
                     short_desc=format_pmm_short_desc(result),
-                    target=result.file_path,  # unique per file, used for shell_execute
-                    args_hint=kp.ItemArgsHint.FORBIDDEN,
-                    hit_hint=kp.ItemHitHint.IGNORE,
+                    target=result.file_path,
+                    args_hint=kp.ItemArgsHint.ACCEPTED,  # Tab → drill-down
+                    hit_hint=kp.ItemHitHint.KEEPALL,
                 )
             )
         return suggestions
@@ -428,7 +579,7 @@ class PmBuddy(kp.Plugin):
                     category=self.ITEMCAT_RESULT,
                     label=format_label(result),
                     short_desc=format_short_desc(result),
-                    target=f"result_{i}",  # unique target to avoid deduplication
+                    target=f"result_{i}",
                     data_bag=data_bag,
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE,
@@ -438,10 +589,9 @@ class PmBuddy(kp.Plugin):
 
     def _handle_shortcut_input(self, user_input):
         """Handle shortcut input (starts with #)."""
-        shortcut = user_input[1:].lower()  # strip # and lowercase
+        shortcut = user_input[1:].lower()
         suggestions = []
 
-        # #edit — open config file
         if shortcut == "" or "edit".startswith(shortcut):
             suggestions.append(
                 self.create_item(
@@ -454,7 +604,6 @@ class PmBuddy(kp.Plugin):
                 )
             )
 
-        # #list — show all PMM files (only if pmm_folder is configured)
         if self._pmm_folder and (shortcut == "" or "list".startswith(shortcut)):
             suggestions.append(
                 self.create_item(
