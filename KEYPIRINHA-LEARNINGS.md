@@ -2,7 +2,7 @@
 
 **Purpose**: Best Practices, Pitfalls, and Insights for Keypirinha Plugin Development
 **Audience**: Claude (primary), Erik (contributor)
-**Updated**: 2025-12-22
+**Updated**: 2026-02-27
 
 ---
 
@@ -566,6 +566,7 @@ self.create_item(
 ---
 
 **Version History:**
+- **2026-02-27**: PMB v1.0.0-dev.5 fix (Tab-Chaining auf PMM-Items: loop_on_suggest=True fehlte)
 - **2026-02-09**: MB v1.0.0 release (Mindbox - local file browser, no API needed)
 - **2026-02-05**: US v1.1.0 release (User History - filtered history with API search option, args_hint=FORBIDDEN for shortcuts)
 - **2026-02-05**: US v1.0.0 release (User Search - uses JQE patterns: state machine, actions, shortcuts)

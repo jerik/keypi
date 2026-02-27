@@ -43,7 +43,7 @@ class PmBuddy(kp.Plugin):
                Tab on PMM result → drill-down to linked Jira tickets / dates
     """
 
-    VERSION = "1.0.0-dev.4"
+    VERSION = "1.0.0-dev.5"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -558,6 +558,7 @@ class PmBuddy(kp.Plugin):
                     target=result.file_path,
                     args_hint=kp.ItemArgsHint.ACCEPTED,  # Tab → drill-down
                     hit_hint=kp.ItemHitHint.KEEPALL,
+                    loop_on_suggest=True,  # CRITICAL: without this Tab does nothing
                 )
             )
         return suggestions
