@@ -1,6 +1,6 @@
 # KeyPi - Feature Backlog
 
-**Letzte Aktualisierung:** 2026-02-26
+**Letzte Aktualisierung:** 2026-02-27
 
 ---
 
@@ -52,6 +52,39 @@ Erwartetes Verhalten: Das alte keyword funktioniert nicht mehr
 Aktuelles Verhalten: Das alte keyword funktioniert weiterhin und ruft das plugin auf
 Workaround: den eintrag jqe manuell aus dem Katalog entfernen, mittels CTRL + DEL sofern es stört
 Prio: sehr gering
+
+---
+
+## Dokumentation
+
+### Dokumentationsstruktur überarbeiten: Plugin-eigene README, Docs und Changelog
+
+Die bestehende Dokumentation ist stark zentralisiert (grosse `README.md`, `documentation.md`).
+Ziel: Jedes Plugin ist eigenständig dokumentiert und nutzbar ohne die zentrale README zu lesen.
+
+**Idee:**
+- Jedes Plugin-Verzeichnis (`keypi_jqe/`, `keypi_cqe/`, `keypi_us/`, `keypi_mindbox/`, `keypi_pmb/`) erhält seine eigene `README.md` und `CHANGELOG.md`
+- Die zentrale `README.md` wird auf einen kurzen Überblick reduziert mit einer Plugin-Tabelle und Links zu den Plugin-READMEs
+
+**Neue Struktur:**
+```
+keypi_jqe/
+  README.md      ← Features, Installation, Konfiguration, Known Limitations
+  CHANGELOG.md   ← Versionshistorie des Plugins
+keypi_cqe/README.md + CHANGELOG.md
+keypi_us/README.md + CHANGELOG.md
+keypi_mindbox/README.md + CHANGELOG.md
+keypi_pmb/README.md + CHANGELOG.md
+
+README.md        ← Kurzbeschreibung + Tabelle: Plugin | Beschreibung | Link
+documentation.md ← Prüfen ob Inhalte besser in Plugin-READMEs gehören
+```
+
+**Aufgaben:**
+- [ ] Plugin-README für alle 5 Plugins erstellen (Inhalte aus zentraler README extrahieren)
+- [ ] `CHANGELOG.md` pro Plugin anlegen
+- [ ] Zentrale `README.md` auf Überblick reduzieren + Links einfügen
+- [ ] `documentation.md` auf Redundanzen prüfen
 
 ---
 
