@@ -43,7 +43,7 @@ class PmBuddy(kp.Plugin):
                Tab on PMM result → drill-down to linked Jira tickets / dates
     """
 
-    VERSION = "1.0.0-dev.5"
+    VERSION = "1.0.0-dev.6"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1

@@ -215,6 +215,25 @@ class TestScanFolder:
         results = scan_folder(str(tmp_path))
         assert results[0].title == "FOO-123"
 
+    def test_descriptive_filename_extracts_jira_key(self, tmp_path):
+        """FOO-123 - My Feature.md → key = 'FOO-123'"""
+        _write_md(tmp_path, "FOO-123 - My Feature.md", _MINIMAL_FM)
+        results = scan_folder(str(tmp_path))
+        assert len(results) == 1
+        assert results[0].key == "FOO-123"
+
+    def test_key_at_end_of_descriptive_filename(self, tmp_path):
+        """2026-02 Initiative foobar FOO-123.md → key = 'FOO-123'"""
+        _write_md(tmp_path, "2026-02 Initiative foobar FOO-123.md", _MINIMAL_FM)
+        results = scan_folder(str(tmp_path))
+        assert results[0].key == "FOO-123"
+
+    def test_filename_without_jira_key_uses_full_stem(self, tmp_path):
+        """notes.md (no Jira key) → key = 'notes'"""
+        _write_md(tmp_path, "notes.md", _MINIMAL_FM)
+        results = scan_folder(str(tmp_path))
+        assert results[0].key == "notes"
+
     def test_folder_with_spaces_in_path(self, tmp_path):
         # Simulate OneDrive folder: create a subdirectory with spaces
         spaced = tmp_path / "OneDrive Folder With Spaces"
@@ -400,7 +419,7 @@ class TestFilterPmm:
 class TestFormatPmmHelpers:
     def test_label_format(self):
         r = _make_result(key="FOO-123", title="Foobar implementieren")
-        assert format_pmm_label(r) == "PPM: Foobar implementieren"
+        assert format_pmm_label(r) == "PMM: Foobar implementieren"
 
     def test_short_desc_with_jira_key_fields_and_tags(self):
         r = _make_result(

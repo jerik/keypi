@@ -2,7 +2,13 @@
 PM Management File Client (PMM)
 
 Reads local Markdown files with YAML frontmatter that serve as personal
-PM management notes. Files are named <TICKET-KEY>.md (e.g. FOO-123.md).
+PM management notes. Files may be named freely as long as the filename
+contains a Jira key, e.g.:
+  - FOO-123.md
+  - FOO-123 - My descriptive name.md
+  - 2026-02 FOO-123 Initiative foobar.md
+
+The Jira key is extracted via regex from the filename stem.
 
 Frontmatter format (between --- delimiters):
     ---
@@ -35,6 +41,9 @@ _FM_BLOCK_RE = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---", re.DOTALL)
 
 # Regex to extract tag list content from [foo-imp, bar-main]
 _TAGS_LIST_RE = re.compile(r"\[([^\]]*)\]")
+
+# Jira key anywhere in a string (for filename extraction)
+_JIRA_KEY_IN_FILENAME = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 
 # Exact Jira key: PROJECT-123 (alphanumeric project keys supported)
 _JIRA_KEY_EXACT = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
@@ -97,7 +106,10 @@ def scan_folder(folder: str) -> list[PmmResult]:
         if not os.path.isfile(file_path):
             continue
 
-        key = os.path.splitext(entry)[0]  # FOO-123 from FOO-123.md
+        # Extract Jira key from filename: "FOO-123 - My Feature.md" → "FOO-123"
+        stem = os.path.splitext(entry)[0]
+        key_match = _JIRA_KEY_IN_FILENAME.search(stem)
+        key = key_match.group(1) if key_match else stem
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -189,9 +201,9 @@ def format_pmm_label(result: PmmResult) -> str:
     """
     Format a PMM result as a Keypirinha item label.
 
-    Example: PPM: Foobar implementieren
+    Example: PMM: Foobar implementieren
     """
-    return f"PPM: {result.title}"
+    return f"PMM: {result.title}"
 
 
 def format_pmm_short_desc(result: PmmResult) -> str:
