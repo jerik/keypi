@@ -1,6 +1,6 @@
 # KeyPi - Feature Backlog
 
-**Letzte Aktualisierung:** 2025-12-20
+**Letzte Aktualisierung:** 2026-02-26
 
 ---
 
@@ -28,6 +28,8 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 
 ---
 ## Minor Bugs
+### PMB: Kein Absturz durch fehlende jira_url_base
+Das fehlen der jira_url_base, soll das plugin nicht zum absturz bringen. Aktuell wir das aus der DB gelesen. Wenn das dort nicht gesetzt ist, sollte das auf einen Fehler laufen, aber das Plugin ist weiterhin nutzbar, Halt ohne die Jira-Actions
 
 ### CQE: Space-Name wird nicht korrekt ausgelesen
 **Plugin:** Confluence Query Explorer (CQE)
