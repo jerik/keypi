@@ -4,7 +4,7 @@
 **Confluence Plugin Version:** 1.3.0
 **User Search Plugin Version:** 1.1.0
 **Mindbox Plugin Version:** 1.0.0
-**PM-Buddy Plugin Version:** 1.0.0
+**PM-Buddy Plugin Version:** 1.0.0-dev
 
 ---
 
@@ -856,10 +856,12 @@ Keypirinha-Konsole: `F2`
 
 ## Funktionen
 - Jira-Tickets und Confluence-Seiten aus dem pm-buddy Knowledge-Graph durchsuchen
+- Lokale PMM-Dateien (Markdown-Projektdateien) direkt anzeigen und aufklappen
 - Direkter SQLite-Zugriff (kein pm-buddy-Package nötig)
-- Ergebnisse als filterbare Liste mit Ranking (Epics vor Stories, häufig besuchte zuerst)
+- Ergebnisse als filterbare Liste mit Ranking (Epics vor Stories, häufig besuchte zuerst, PMM-Dateien zuerst)
 - **Multi-Action Support**: Tab-Menü mit mehreren Aktionen
 - Tickets/Seiten im Browser öffnen oder URLs kopieren
+- Tab auf PMM-Datei: verknüpfte Jira-Tickets und Datumsfelder als Sub-Items
 
 ---
 
@@ -868,6 +870,7 @@ Keypirinha-Konsole: `F2`
 ### Voraussetzungen
 - Keypirinha (https://keypirinha.com)
 - pm-buddy installiert und mindestens einmal synchronisiert (`pm-buddy sync`)
+- Optional: PMM-Ordner mit Markdown-Projektdateien (für PMM-Features)
 
 ### Manuelle Installation
 1. Kopiere `keypi_pmb/` nach:
@@ -885,7 +888,13 @@ Erstelle: `%APPDATA%\Keypirinha\User\keypi_pmb.ini`
 keyword = pmb
 # Pfad zur pm-buddy Datenbank (Umgebungsvariablen werden aufgelöst)
 db_path = %USERPROFILE%\.pm-buddy\pm-buddy.db
+# Pfad zum PMM-Ordner mit Markdown-Projektdateien (optional)
+# Leer lassen = PMM-Features deaktiviert
+pmm_folder = %USERPROFILE%\OneDrive\pmm
 ```
+
+- `db_path`: Unterstützt `%USERPROFILE%`, `%APPDATA%` und `~`
+- `pmm_folder`: Leer = nur DB-Suche; gesetzt = PMM-Dateien erscheinen über DB-Ergebnissen
 
 Keypirinha neu starten: `Ctrl + Alt + R`
 
@@ -898,7 +907,7 @@ Keypirinha neu starten: `Ctrl + Alt + R`
 1. Tippe: `pmb` → `Tab`
 2. Suchbegriff eingeben: `steuer`
 3. `Enter` drücken → Suche wird ausgeführt
-4. Ergebnisse erscheinen
+4. Ergebnisse erscheinen (PMM-Dateien zuerst, dann DB-Ergebnisse)
 
 ### Filter-Modus
 
@@ -907,23 +916,36 @@ Nach Ausführung der Suche kannst du die Ergebnisse filtern:
 1. Suchbegriff eingeben: `auth` → `Enter`
 2. Ergebnisse werden angezeigt
 3. Weiteren Text eingeben: `open` → filtert Ergebnisse lokal (nach Titel, Key, Status, Tags)
-4. Eintrag auswählen → `Enter` → öffnet im Browser
+4. Eintrag auswählen → `Enter` → öffnet im Browser (DB) oder Editor (PMM)
 
 **Vorteile:**
 - Keine zusätzlichen Datenbankabfragen beim Filtern
 - Schnelles Durchsuchen großer Ergebnislisten
-- Filter durchsucht: Titel, Ticket-Key, Status, Assignee, Tags
+- Filter durchsucht: Titel, Ticket-Key, Status, Assignee, Tags, alle Frontmatter-Felder
 
 ### Anzeige-Format
 
 | Typ | Label | Beschreibung |
 |-----|-------|-------------|
-| Jira | `KEY-123: [epic][Open] Steuererklaerung` | `Assignee: Max | Fix: 1.2.0 | Tags: steuer, auth` |
+| PMM-Datei | `PMM: Foobar implementieren` | `FOO-2360 | INT-264 | Tags: foo, bar` |
+| Jira | `KEY-123: [epic][Open] Steuererklaerung` | `Assignee: Max | Fix: 1.2.0 | Tags: steuer` |
 | Confluence | `[STEU] Fachkonzept Steuern` | `Type: confluence_page | Modified: 2026-01-15` |
 
-### Multi-Action Support
+### PMM Drill-Down (Tab auf PMM-Datei)
 
-Jeder Sucheintrag bietet mehrere Aktionen:
+Tab auf einer PMM-Datei öffnet Sub-Items für jeden verlinkten Jira-Ticket und jedes Datumsfeld:
+
+```
+[epic] FOO-2360: Umsetzung foobar [Open]    ← Jira-Ticket (Enter = im Browser öffnen)
+[story] BAR-6852: Backend-Anbindung [Done]  ← Jira-Ticket
+Fälligkeit: 2026-03-31                       ← Datum (Enter = in Clipboard kopieren)
+```
+
+- **Jira-Key-Felder**: Typ, Key, Summary (50 Zeichen), Status aus DB; Enter öffnet Jira im Browser
+- **ISO-Datum-Felder** (`YYYY-MM-DD`): Enter kopiert Datum in Clipboard
+- Ticket nicht in DB? → Fallback-URL aus `atlassian_url` (automatisch beim `pm-buddy sync` gespeichert)
+
+### Multi-Action Support (DB-Ergebnisse)
 
 **Standardaktion (Enter):**
 - URL im Browser öffnen
@@ -935,9 +957,11 @@ Jeder Sucheintrag bietet mehrere Aktionen:
 ### Suchalgorithmus
 
 Das Plugin verwendet den gleichen Algorithmus wie pm-buddy:
+- **PMM-Dateien** stehen immer über DB-Ergebnissen
 - **FTS5-Volltext** auf Titel und Ticket-Key (Präfix-Suche)
 - **Tag-Suche** auf auto/manuelle Tags
 - **Typ-Boost**: Initiativen (4×) > Epics (3×) > Confluence-Seiten (1.5×) > Stories/Bugs/Tasks (1×) > Subtasks (0.5×)
+- **PMM-Boost**: Tickets in PMM-Dateien erwähnt → +10.0 Score-Bonus
 - **Visit-Boost**: Häufig im Browser besuchte Einträge werden bevorzugt
 - **Hidden-Filter**: Versteckte Einträge werden ausgeblendet
 
@@ -946,10 +970,39 @@ Das Plugin verwendet den gleichen Algorithmus wie pm-buddy:
 | Shortcut | Beschreibung |
 |----------|-------------|
 | `#edit` | Konfigurationsdatei öffnen |
+| `#list` | Alle PMM-Dateien anzeigen (mit Live-Filter) |
 
 ### Config bearbeiten
 
 Tippe: `pmb` → `#edit` → `Enter` → Config-Datei wird geöffnet
+
+---
+
+## 📄 PMM-Datei-Format
+
+PMM-Dateien sind Markdown-Dateien mit YAML-Frontmatter:
+
+```markdown
+---
+title: Foobar implementieren
+initiative: INT-264
+fachkonzept: FOO-2360
+umsetzung: BAR-6852
+tags: [foo, bar]
+Fälligkeit: 2026-03-31
+---
+
+# Notizen...
+```
+
+**Konventionen:**
+- Dateiname = Haupt-Ticket-Key (z.B. `FOO-2360.md`) — oder beliebiger Name
+- `title` → Anzeige-Label im Plugin (`PMM: Foobar implementieren`)
+- Felder mit Jira-Key-Wert → Drill-Down-Aktionen (Tab auf PMM-Ergebnis)
+- Felder mit ISO-Datum-Wert (`YYYY-MM-DD`) → Clipboard-Aktion
+- `tags: [...]` → suchbar und filterbar
+- Zeilen mit `#` → ignoriert (Kommentare)
+- Windows-Zeilenenden (CRLF) und Pfade mit Leerzeichen (OneDrive) unterstützt
 
 ---
 
@@ -964,6 +1017,11 @@ Tippe: `pmb` → `#edit` → `Enter` → Config-Datei wird geöffnet
 - pm-buddy noch nie synchronisiert? → `pm-buddy sync` ausführen
 - Datenbankpfad korrekt? → `#edit` → prüfen
 
+### PMM-Dateien erscheinen nicht
+- `pmm_folder` in `keypi_pmb.ini` gesetzt?
+- Pfad korrekt? Ordner vorhanden?
+- Dateien haben `.md`-Endung?
+
 ### Logs ansehen
 Keypirinha-Konsole: `F2`
 
@@ -971,12 +1029,25 @@ Keypirinha-Konsole: `F2`
 
 ## 📋 Limits (PMB)
 
-- Max. 50 Ergebnisse pro Suche
+- Max. 50 Ergebnisse pro Suche (DB)
 - Nur Lese-Zugriff (kein Schreiben in die Datenbank)
 
 ---
 
 ## 🔄 Changelog (PMB)
+
+### Version 1.0.0-dev (2026-02-27)
+- **Neu:** PMM-Integration (lokale Markdown-Projektdateien)
+  - PMM-Dateien erscheinen über DB-Ergebnissen
+  - Tab auf PMM-Datei: Drill-Down mit verlinkten Jira-Tickets und Datumsfeldern
+  - Jira-Sub-Items zeigen Typ, Summary (50 Zeichen), Status, Fix-Version
+  - ISO-Datum-Felder: Enter kopiert Datum in Clipboard
+  - Fallback-URL via `atlassian_url` aus DB-Settings (kein doppelter Config-Eintrag)
+- **Neu:** `#list` Shortcut – alle PMM-Dateien anzeigen
+- **Neu:** `pmm_folder` Config-Option (optional; leer = PMM deaktiviert)
+- **Neu:** PMM-Boost im Suchalgorithmus (+10.0 für Tickets in PMM-Dateien)
+- **Feature:** Flexible Dateinamen (nicht mehr auf KEY.md beschränkt)
+- **Test:** Tests für PMM-Client, Drill-Down und pmb_client erweitert
 
 ### Version 1.0.0 (2026-02-19)
 - **Initial Release:** PM-Buddy Knowledge-Graph Plugin
@@ -993,4 +1064,4 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev

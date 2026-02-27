@@ -545,6 +545,114 @@ self.create_item(
 
 ---
 
+## 🗄️ Direct SQLite Access (Offline DB Plugins)
+
+### No API Client, No Subprocess
+- ✅ **DO**: Access SQLite databases directly with Python's `sqlite3` module
+  ```python
+  import sqlite3
+  conn = sqlite3.connect(db_path)
+  conn.row_factory = sqlite3.Row  # Access columns by name
+  cursor = conn.cursor()
+  cursor.execute("SELECT key, title FROM nodes WHERE hidden = 0")
+  rows = cursor.fetchall()
+  row["key"]  # Access by column name
+  ```
+- ✅ **DO**: Use `row_factory = sqlite3.Row` for readable column access
+- ❌ **DON'T**: Call external processes (subprocess, uv run) for DB access — it's slow and fragile
+- 💡 **Lesson (PMB v1.0.0)**: Direct SQLite is faster, no dependency on external Python env
+
+### FTS5 Special Character Handling
+- ⚠️ **Pitfall**: FTS5 treats `-`, `.`, `/` as token separators — they break queries
+- 🔧 **Solution**: Quote the search term with `"..."` for FTS5 phrase queries
+  ```python
+  def _fts5_escape(query: str) -> str:
+      """Wrap in double quotes to treat as phrase, escape internal quotes."""
+      escaped = query.replace('"', '""')
+      return f'"{escaped}"'
+
+  # Usage: search for "steuer" → steuer* (prefix search)
+  fts_term = f'"{query}"*'  # Prefix match within quoted phrase
+  cursor.execute("SELECT * FROM nodes_fts WHERE nodes_fts MATCH ?", (fts_term,))
+  ```
+- ✅ **DO**: Test with queries containing `-` (e.g., Jira keys like `FOO-123`)
+- 💡 **Lesson (PMB v1.0.0)**: FTS5 quoting is mandatory for real-world search queries
+
+### Graceful DB Fallback
+- ✅ **DO**: Handle missing tables gracefully (e.g., optional migrations)
+  ```python
+  def get_setting(self, key: str) -> str | None:
+      try:
+          cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+          row = cursor.fetchone()
+          return row["value"] if row else None
+      except sqlite3.OperationalError:
+          return None  # Table doesn't exist yet
+  ```
+- 💡 **Lesson (PMB v1.0.0)**: Plugin must work even if DB schema is older than expected
+
+---
+
+## 🔽 Tab Drill-Down (Sub-Item Lists)
+
+### Expanding an Item into Sub-Items (Different from Virtual Query Mode)
+- ✅ **DO**: Use `items_chain` to detect Tab press on a specific item
+  ```python
+  def on_suggest(self, user_input, items_chain):
+      if items_chain and items_chain[-1].category() == self.ITEMCAT_PMM:
+          # User pressed Tab on a PMM item → show sub-items
+          self._expand_pmm_item(items_chain[-1])
+          return
+  ```
+- ✅ **DO**: Make expandable items chainable with all three required parameters:
+  ```python
+  self.create_item(
+      category=self.ITEMCAT_PMM,
+      args_hint=kp.ItemArgsHint.ACCEPTED,   # Tab adds to chain
+      hit_hint=kp.ItemHitHint.KEEPALL,       # Enable chaining
+      loop_on_suggest=True,                  # CRITICAL: Call on_suggest on Tab
+  )
+  ```
+- ✅ **DO**: Register **no** `set_actions()` for chainable items — actions take priority over chaining
+- 💡 **Lesson (PMB v1.0.0-dev.5)**: `loop_on_suggest=True` is the key — without it, Tab does nothing
+
+### Sub-Item Categories for Drill-Down
+- ✅ **DO**: Use distinct item categories for each sub-item type
+  ```python
+  ITEMCAT_PMM_DETAIL = kp.ItemCategory.USER_BASE + 4  # Jira ticket sub-items
+  ITEMCAT_PMM_DATE   = kp.ItemCategory.USER_BASE + 5  # Date fields
+  ```
+- ✅ **DO**: Register separate actions per category in `on_start()`
+  ```python
+  self.set_actions(self.ITEMCAT_PMM_DETAIL, [
+      self.create_action(name="open", label="Open in Jira"),
+      self.create_action(name="copy_url", label="Copy URL"),
+  ])
+  self.set_actions(self.ITEMCAT_PMM_DATE, [
+      self.create_action(name="copy_date", label="Copy date to clipboard"),
+  ])
+  ```
+- 💡 **Lesson (PMB v1.0.0)**: Clean separation of categories enables clean action handling
+
+### Frontmatter Parsing Without External Library
+- ✅ **DO**: Parse YAML-like frontmatter with regex — no PyYAML needed in plugin
+  ```python
+  import re
+  _FM_BLOCK = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---", re.DOTALL)
+  _FM_LINE  = re.compile(r"^([^:#\r\n][^:\r\n]*):\s*(.+)", re.MULTILINE)
+
+  def _parse_frontmatter(content: str) -> dict:
+      m = _FM_BLOCK.match(content)
+      if not m:
+          return {}
+      return {k.strip(): v.strip() for k, v in _FM_LINE.findall(m.group(1))}
+  ```
+- ✅ **DO**: Handle CRLF line endings (`\r?\n`) for Windows compatibility
+- ✅ **DO**: Ignore `#`-comment lines in frontmatter
+- 💡 **Lesson (PMB v1.0.0)**: Simple regex parser is sufficient — avoids PyYAML dependency
+
+---
+
 ## 📂 Local File-Based Plugins
 
 ### No API Client Needed
@@ -566,6 +674,7 @@ self.create_item(
 ---
 
 **Version History:**
+- **2026-02-27**: PMB v1.0.0-dev (Direct SQLite access, FTS5 quoting, Tab Drill-Down, Frontmatter parsing)
 - **2026-02-27**: PMB v1.0.0-dev.5 fix (Tab-Chaining auf PMM-Items: loop_on_suggest=True fehlte)
 - **2026-02-09**: MB v1.0.0 release (Mindbox - local file browser, no API needed)
 - **2026-02-05**: US v1.1.0 release (User History - filtered history with API search option, args_hint=FORBIDDEN for shortcuts)
