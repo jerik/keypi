@@ -438,6 +438,21 @@ class PmBuddy(kp.Plugin):
         file_path = pmm_item.target()
 
         try:
+            self._expand_pmm_item_inner(file_path)
+        except Exception as e:
+            self.err(f"[pmb] Unexpected error expanding PMM item {file_path}: {e}")
+            self.set_suggestions(
+                [
+                    self.create_error_item(
+                        label="Error reading PM file",
+                        short_desc=str(e),
+                    )
+                ]
+            )
+
+    def _expand_pmm_item_inner(self, file_path):
+        """Inner implementation of _expand_pmm_item, without top-level try-except."""
+        try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
         except Exception as e:
@@ -458,9 +473,15 @@ class PmBuddy(kp.Plugin):
         atlassian_url = None
         if self._client and self._client.is_open():
             atlassian_url = self._client.get_setting("atlassian_url")
+        elif not self._client:
+            self.warn(
+                "[pmb] No DB connection — Jira URL lookup unavailable. "
+                "Set db_path in keypi_pmb.ini and run 'pm-buddy sync'."
+            )
 
         suggestions = []
         skip_fields = {"title", "tags"}
+        _url_warning_logged = False  # warn at most once per expand
 
         for field_name, field_value in fm.items():
             if field_name in skip_fields or not isinstance(field_value, str):
@@ -484,13 +505,22 @@ class PmBuddy(kp.Plugin):
                     short_desc = " | ".join(desc_parts)
                     url = detail.url
                 else:
-                    # Not in DB — show key only, construct fallback URL
-                    label = field_value
-                    short_desc = field_name
+                    # Not in DB — construct fallback URL from atlassian_url
                     if atlassian_url:
                         url = f"{atlassian_url.rstrip('/')}/browse/{field_value}"
+                        label = field_value
+                        short_desc = f"{field_name} (not synced)"
                     else:
+                        # No URL available — show item with clear hint, no Jira action
+                        if not _url_warning_logged:
+                            self.warn(
+                                f"[pmb] {field_value} not in DB and atlassian_url not configured — "
+                                "run 'pm-buddy sync' to enable Jira URL actions"
+                            )
+                            _url_warning_logged = True
                         url = ""
+                        label = f"{field_value} (not synced — run pm-buddy sync)"
+                        short_desc = field_name
 
                 suggestions.append(
                     self.create_item(
