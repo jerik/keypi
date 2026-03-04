@@ -28,8 +28,10 @@ Die letzten 10 JQL-Queries werden gespeichert und können über "hist" Keyword a
 
 ---
 ## Minor Bugs
-### PMB: Kein Absturz durch fehlende jira_url_base
-Das fehlen der jira_url_base, soll das plugin nicht zum absturz bringen. Aktuell wir das aus der DB gelesen. Wenn das dort nicht gesetzt ist, sollte das auf einen Fehler laufen, aber das Plugin ist weiterhin nutzbar, Halt ohne die Jira-Actions
+### ~~PMB: Kein Absturz durch fehlende jira_url_base~~ ✅ Behoben
+Plugin degradiert jetzt sauber: `warn()` im Keypirinha-Log, Item-Label zeigt
+"(not synced — run pm-buddy sync)", `_expand_pmm_item` in top-level try-except
+abgesichert damit kein Crash des Plugins.
 
 ### CQE: Space-Name wird nicht korrekt ausgelesen
 **Plugin:** Confluence Query Explorer (CQE)
