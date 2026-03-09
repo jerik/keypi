@@ -120,18 +120,18 @@ def scan_folder(folder: str) -> list[PmmResult]:
         except OSError:
             continue
 
+        raw_lines = _parse_frontmatter_lines(content)
         fm = _parse_frontmatter(content)
 
         mod_time = os.path.getmtime(file_path)
         modified = time.strftime("%Y-%m-%d", time.localtime(mod_time))
 
         # Build typed field list (all fields except title + tags)
+        # Uses raw_lines to preserve duplicate keys (e.g. two epic: entries)
         _SKIP = {"title", "tags"}
         fields = []
-        for k, v in fm.items():
-            if k in _SKIP:
-                continue
-            if not isinstance(v, str):
+        for k, v in raw_lines:
+            if k in _SKIP or not v:
                 continue
             if _JIRA_KEY_EXACT.match(v):
                 kind = "jira_key"
@@ -254,23 +254,26 @@ def _build_searchable(result: PmmResult) -> str:
     return " ".join(parts)
 
 
-def _parse_frontmatter(content: str) -> dict:
+def _parse_frontmatter_lines(content: str) -> list[tuple[str, str]]:
     """
-    Parse YAML-style frontmatter from markdown content.
+    Parse frontmatter into an ordered list of (key, value) pairs.
 
-    Handles simple key: value pairs and tags: [foo, bar] notation.
-    Keys are lowercased for case-insensitive lookup.
+    Unlike _parse_frontmatter(), this preserves duplicate keys (e.g. two
+    'epic:' lines both appear as separate entries). Used for drill-down
+    expansion and field classification where duplicates matter.
+
+    Keys are lowercased. Inline comments (# ...) are stripped from values.
     Lines starting with # are treated as comments and ignored.
 
     Returns:
-        Dict with parsed fields. 'tags' is always a list[str].
-        Empty dict if no valid frontmatter found.
+        List of (key, value) tuples in order of appearance.
+        Empty list if no valid frontmatter found.
     """
     m = _FM_BLOCK_RE.match(content)
     if not m:
-        return {}
+        return []
 
-    result = {}
+    pairs = []
     for line in m.group(1).splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
@@ -278,9 +281,30 @@ def _parse_frontmatter(content: str) -> dict:
         if ":" not in line:
             continue
         key, _, val = line.partition(":")
-        # Strip inline comments: "FOO-123  # some comment" → "FOO-123"
         val = re.sub(r"\s+#.*$", "", val).strip()
-        result[key.strip().lower()] = val
+        pairs.append((key.strip().lower(), val))
+    return pairs
+
+
+def _parse_frontmatter(content: str) -> dict:
+    """
+    Parse YAML-style frontmatter from markdown content.
+
+    Handles simple key: value pairs and tags: [foo, bar] notation.
+    Keys are lowercased for case-insensitive lookup.
+    Lines starting with # are treated as comments and ignored.
+    Inline comments (# ...) are stripped from values.
+    Duplicate keys: last value wins (use _parse_frontmatter_lines for all).
+
+    Returns:
+        Dict with parsed fields. 'tags' is always a list[str].
+        Empty dict if no valid frontmatter found.
+    """
+    pairs = _parse_frontmatter_lines(content)
+    if not pairs:
+        return {}
+
+    result = dict(pairs)  # last value wins for duplicate keys
 
     # Parse tags: [foo-imp, bar-main] → ['foo-imp', 'bar-main']
     if "tags" in result:

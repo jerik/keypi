@@ -30,6 +30,7 @@ from keypi_pmb.lib.pmm_client import (  # noqa: E402
     FrontmatterField,
     PmmResult,
     _parse_frontmatter,
+    _parse_frontmatter_lines,
     filter_pmm,
     format_pmm_label,
     format_pmm_short_desc,
@@ -599,3 +600,97 @@ class TestParseFrontmatterInlineComments:
         content = "---\npage: 76934384  # design doc\n---\n"
         fm = _parse_frontmatter(content)
         assert fm["page"] == "76934384"
+
+
+# ---------------------------------------------------------------------------
+# Tests: _parse_frontmatter_lines (duplicate key support)
+# ---------------------------------------------------------------------------
+
+
+class TestParseFrontmatterLines:
+    def test_preserves_duplicate_keys(self):
+        """Both epic entries must appear as separate tuples."""
+        content = (
+            "---\n"
+            "title: Foobar\n"
+            "epic: BAR-2360  # first epic\n"
+            "epic: BIR-6752  # second epic\n"
+            "---\n"
+        )
+        lines = _parse_frontmatter_lines(content)
+        epic_values = [v for k, v in lines if k == "epic"]
+        assert epic_values == ["BAR-2360", "BIR-6752"]
+
+    def test_preserves_order(self):
+        content = "---\ninitiative: FOO-1\nepic: BAR-2\nticket: BAZ-3\n---\n"
+        lines = _parse_frontmatter_lines(content)
+        keys = [k for k, _ in lines]
+        assert keys == ["initiative", "epic", "ticket"]
+
+    def test_inline_comments_stripped(self):
+        content = "---\nepic: FOO-123  # Dokument-epic; geschlossen\n---\n"
+        lines = _parse_frontmatter_lines(content)
+        assert lines == [("epic", "FOO-123")]
+
+    def test_empty_returns_empty_list(self):
+        assert _parse_frontmatter_lines("no frontmatter here") == []
+
+    def test_comment_lines_ignored(self):
+        content = "---\n# this is a comment\nepic: FOO-1\n---\n"
+        lines = _parse_frontmatter_lines(content)
+        assert lines == [("epic", "FOO-1")]
+
+    def test_keys_lowercased(self):
+        content = "---\nEpic: FOO-1\nInitiative: BAR-2\n---\n"
+        lines = _parse_frontmatter_lines(content)
+        keys = [k for k, _ in lines]
+        assert "epic" in keys
+        assert "initiative" in keys
+
+
+class TestScanFolderDuplicateKeys:
+    def test_duplicate_epic_fields_produce_multiple_fields(self, tmp_path):
+        """Two 'epic:' lines must both appear in PmmResult.fields."""
+        content = (
+            "---\n"
+            "title: My Feature\n"
+            "epic: BAR-2360  # Dokument-epic\n"
+            "epic: BIR-6752  # Run-epic\n"
+            "---\n"
+        )
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        assert len(results) == 1
+        epic_fields = [f for f in results[0].fields if f.name == "epic"]
+        assert len(epic_fields) == 2
+        values = {f.value for f in epic_fields}
+        assert "BAR-2360" in values
+        assert "BIR-6752" in values
+        assert all(f.kind == "jira_key" for f in epic_fields)
+
+    def test_full_example_frontmatter(self, tmp_path):
+        """Replicate the user's real frontmatter with duplicate epics."""
+        content = (
+            "---\n"
+            "title: Foobar\n"
+            "initiative: FOO-27964 \n"
+            "epic: BAR-2360  # Dokuemnt-epic; geschlossen\n"
+            "epic: BIR-6752  # Run-epic\n"
+            "golive: 2026-02-28\n"
+            "tags: [foo, bar]\n"
+            "---\n"
+        )
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        r = results[0]
+        # All four non-title/tags fields should appear
+        field_keys = [f.name for f in r.fields]
+        assert field_keys.count("epic") == 2
+        assert "initiative" in field_keys
+        assert "golive" in field_keys
+        # Kind classification
+        kinds = {f.value: f.kind for f in r.fields}
+        assert kinds["FOO-27964"] == "jira_key"
+        assert kinds["BAR-2360"] == "jira_key"
+        assert kinds["BIR-6752"] == "jira_key"
+        assert kinds["2026-02-28"] == "iso_date"

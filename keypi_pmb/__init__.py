@@ -16,7 +16,7 @@ import keypirinha_util as kpu
 
 from .lib.pmb_client import PmbClient, format_label, format_short_desc
 from .lib.pmm_client import (
-    _parse_frontmatter,
+    _parse_frontmatter_lines,
     _JIRA_KEY_EXACT,
     _ISO_DATE_EXACT,
     _CONFLUENCE_PAGE_ID_EXACT,
@@ -450,7 +450,9 @@ class PmBuddy(kp.Plugin):
             )
             return
 
-        fm = _parse_frontmatter(content)
+        # Use _parse_frontmatter_lines to preserve duplicate keys
+        # (e.g. two 'epic:' entries both become separate drill-down actions)
+        raw_lines = _parse_frontmatter_lines(content)
 
         # Get atlassian_url for URL fallback when ticket not in DB
         atlassian_url = None
@@ -460,8 +462,8 @@ class PmBuddy(kp.Plugin):
         suggestions = []
         skip_fields = {"title", "tags"}
 
-        for field_name, field_value in fm.items():
-            if field_name in skip_fields or not isinstance(field_value, str):
+        for field_name, field_value in raw_lines:
+            if field_name in skip_fields or not field_value:
                 continue
 
             if _JIRA_KEY_EXACT.match(field_value):
