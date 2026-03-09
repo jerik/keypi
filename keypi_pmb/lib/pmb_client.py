@@ -42,7 +42,7 @@ class NodeDetail:
     """Details for a single Jira ticket, used for PMM drill-down."""
 
     key: str
-    node_type: str       # epic, story, bug, task, …
+    node_type: str  # epic, story, bug, task, …
     title: str
     status: str | None
     fix_version: str | None
@@ -133,6 +133,37 @@ class PmbClient:
                 return None
             return NodeDetail(
                 key=row["key"] or key,
+                node_type=row["type"] or "",
+                title=row["title"] or "",
+                status=row["status"],
+                fix_version=row["fix_version"],
+                url=row["url"] or "",
+            )
+        except Exception:
+            return None
+
+    def get_confluence_page(self, page_id: str) -> NodeDetail | None:
+        """
+        Look up a Confluence page by its numeric page ID.
+
+        Args:
+            page_id: Confluence page ID as string (e.g. "76934384").
+
+        Returns:
+            NodeDetail if found, None otherwise.
+        """
+        if not self._conn:
+            return None
+        try:
+            row = self._conn.execute(
+                "SELECT key, type, title, status, fix_version, url "
+                "FROM nodes WHERE key = ? AND source = 'confluence'",
+                (page_id,),
+            ).fetchone()
+            if not row:
+                return None
+            return NodeDetail(
+                key=row["key"] or page_id,
                 node_type=row["type"] or "",
                 title=row["title"] or "",
                 status=row["status"],

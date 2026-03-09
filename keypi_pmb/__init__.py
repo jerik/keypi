@@ -19,6 +19,7 @@ from .lib.pmm_client import (
     _parse_frontmatter,
     _JIRA_KEY_EXACT,
     _ISO_DATE_EXACT,
+    _CONFLUENCE_PAGE_ID_EXACT,
     filter_pmm,
     format_pmm_label,
     format_pmm_short_desc,
@@ -43,15 +44,15 @@ class PmBuddy(kp.Plugin):
                Tab on PMM result → drill-down to linked Jira tickets / dates
     """
 
-    VERSION = "1.0.0-dev.6"
+    VERSION = "1.0.0-dev.7"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
-    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2      # pm-buddy DB results
+    ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 2  # pm-buddy DB results
     ITEMCAT_SHORTCUT = kp.ItemCategory.USER_BASE + 3
-    ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4         # Local PMM file results
+    ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4  # Local PMM file results
     ITEMCAT_PMM_DETAIL = kp.ItemCategory.USER_BASE + 5  # Drill-down: Jira tickets
-    ITEMCAT_PMM_DATE = kp.ItemCategory.USER_BASE + 6    # Drill-down: ISO date fields
+    ITEMCAT_PMM_DATE = kp.ItemCategory.USER_BASE + 6  # Drill-down: ISO date fields
 
     # Modes
     MODE_INPUT = "input"
@@ -65,7 +66,7 @@ class PmBuddy(kp.Plugin):
         self._client = None
         self._current_mode = self.MODE_INPUT
         self._cached_results = []  # DB results (list[PmbResult])
-        self._cached_pmm = []      # PMM results from last search (list[PmmResult])
+        self._cached_pmm = []  # PMM results from last search (list[PmmResult])
 
     # ------------------------------------------------------------------
     # Keypirinha lifecycle
@@ -138,10 +139,7 @@ class PmBuddy(kp.Plugin):
             self._reset_to_input_mode()
 
         # --- Tab on PMM item → expand to linked Jira tickets / date fields ---
-        if (
-            len(items_chain) > 1
-            and items_chain[-1].category() == self.ITEMCAT_PMM
-        ):
+        if len(items_chain) > 1 and items_chain[-1].category() == self.ITEMCAT_PMM:
             self._expand_pmm_item(items_chain[-1])
             return
 
@@ -473,20 +471,11 @@ class PmBuddy(kp.Plugin):
                     detail = self._client.get_node_by_key(field_value)
 
                 if detail:
-                    # Full details from DB
-                    type_str = f"[{detail.node_type}]" if detail.node_type else ""
-                    status_str = f"[{detail.status}]" if detail.status else ""
-                    title_str = detail.title[:50]
-                    label = f"{type_str} {detail.key}: {title_str} {status_str}".strip()
-                    desc_parts = [field_name]
-                    if detail.fix_version:
-                        desc_parts.append(f"fix: {detail.fix_version}")
-                    short_desc = " | ".join(desc_parts)
+                    label = f"{detail.key} {detail.title[:30]}"
                     url = detail.url
                 else:
                     # Not in DB — show key only, construct fallback URL
                     label = field_value
-                    short_desc = field_name
                     if atlassian_url:
                         url = f"{atlassian_url.rstrip('/')}/browse/{field_value}"
                     else:
@@ -496,7 +485,35 @@ class PmBuddy(kp.Plugin):
                     self.create_item(
                         category=self.ITEMCAT_PMM_DETAIL,
                         label=label,
-                        short_desc=short_desc,
+                        short_desc=field_name,
+                        target=field_value,
+                        data_bag=url,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+
+            elif field_name == "page" and _CONFLUENCE_PAGE_ID_EXACT.match(field_value):
+                # Confluence page ID → look up title in DB
+                detail = None
+                if self._client and self._client.is_open():
+                    detail = self._client.get_confluence_page(field_value)
+
+                if detail:
+                    label = detail.title[:30]
+                    url = detail.url
+                else:
+                    label = f"Page {field_value}"
+                    if atlassian_url:
+                        url = f"{atlassian_url.rstrip('/')}/wiki/pages/{field_value}"
+                    else:
+                        url = ""
+
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_PMM_DETAIL,
+                        label=label,
+                        short_desc="Confluence Page",
                         target=field_value,
                         data_bag=url,
                         args_hint=kp.ItemArgsHint.FORBIDDEN,

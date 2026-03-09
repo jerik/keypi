@@ -439,13 +439,17 @@ class TestFormatPmmHelpers:
         """Keys are shown directly (not as 'Epic: KEY'), relying on fields."""
         r = _make_result(
             tags=[],
-            fields=[FrontmatterField(name="umsetzung", value="INT-264", kind="jira_key")],
+            fields=[
+                FrontmatterField(name="umsetzung", value="INT-264", kind="jira_key")
+            ],
         )
         desc = format_pmm_short_desc(r)
         assert "INT-264" in desc
 
     def test_short_desc_fallback_to_modified(self):
-        r = _make_result(epic=None, initiative=None, tags=[], fields=[], modified="2026-01-15")
+        r = _make_result(
+            epic=None, initiative=None, tags=[], fields=[], modified="2026-01-15"
+        )
         desc = format_pmm_short_desc(r)
         assert "2026-01-15" in desc
 
@@ -550,3 +554,48 @@ class TestFrontmatterFields:
         text_values = {f.value for f in text_fields}
         assert "john.doe" in text_values
         assert "backend" in text_values
+
+    def test_confluence_page_id_classified_correctly(self, tmp_path):
+        """page: 76934384 → confluence_page_id kind."""
+        content = "---\ntitle: Test\npage: 76934384\n---\n"
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        conf_fields = [f for f in results[0].fields if f.kind == "confluence_page_id"]
+        assert len(conf_fields) == 1
+        assert conf_fields[0].value == "76934384"
+        assert conf_fields[0].name == "page"
+
+    def test_numeric_value_in_non_page_field_is_text(self, tmp_path):
+        """Numeric values in non-page fields are classified as text."""
+        content = "---\ntitle: Test\ncount: 42\n---\n"
+        _write_md(tmp_path, "FOO-1.md", content)
+        results = scan_folder(str(tmp_path))
+        text_fields = [f for f in results[0].fields if f.kind == "text"]
+        assert any(f.value == "42" for f in text_fields)
+
+
+# ---------------------------------------------------------------------------
+# Tests: _parse_frontmatter inline comment stripping
+# ---------------------------------------------------------------------------
+
+
+class TestParseFrontmatterInlineComments:
+    def test_inline_comment_stripped_from_jira_value(self):
+        content = "---\nepic: FOO-123  # main epic\n---\n"
+        fm = _parse_frontmatter(content)
+        assert fm["epic"] == "FOO-123"
+
+    def test_inline_comment_stripped_preserves_date(self):
+        content = "---\nfaelligkeit: 2026-02-25  # deadline\n---\n"
+        fm = _parse_frontmatter(content)
+        assert fm["faelligkeit"] == "2026-02-25"
+
+    def test_value_without_comment_unchanged(self):
+        content = "---\nticket: BAR-456\n---\n"
+        fm = _parse_frontmatter(content)
+        assert fm["ticket"] == "BAR-456"
+
+    def test_inline_comment_stripped_from_confluence_page(self):
+        content = "---\npage: 76934384  # design doc\n---\n"
+        fm = _parse_frontmatter(content)
+        assert fm["page"] == "76934384"

@@ -51,27 +51,30 @@ _JIRA_KEY_EXACT = re.compile(r"^[A-Z][A-Z0-9]+-\d+$")
 # ISO date: YYYY-MM-DD
 _ISO_DATE_EXACT = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
+# Confluence page ID: purely numeric (e.g. 76934384)
+_CONFLUENCE_PAGE_ID_EXACT = re.compile(r"^\d+$")
+
 
 @dataclass
 class FrontmatterField:
     """A single frontmatter field (not title/tags)."""
 
-    name: str   # Field name as written in the file (original case)
+    name: str  # Field name as written in the file (original case)
     value: str  # Field value (raw string)
-    kind: str   # "jira_key" | "iso_date" | "text"
+    kind: str  # "jira_key" | "confluence_page_id" | "iso_date" | "text"
 
 
 @dataclass
 class PmmResult:
     """A PM management file with parsed frontmatter."""
 
-    key: str               # Ticket key derived from filename (e.g. FOO-123)
-    title: str             # From frontmatter 'title' field
-    epic: str | None       # From frontmatter 'epic' field (legacy compat)
-    initiative: str | None # From frontmatter 'initiative' field (legacy compat)
-    tags: list[str]        # From frontmatter 'tags' field
-    file_path: str         # Absolute path to the .md file
-    modified: str          # Last modified date (YYYY-MM-DD)
+    key: str  # Ticket key derived from filename (e.g. FOO-123)
+    title: str  # From frontmatter 'title' field
+    epic: str | None  # From frontmatter 'epic' field (legacy compat)
+    initiative: str | None  # From frontmatter 'initiative' field (legacy compat)
+    tags: list[str]  # From frontmatter 'tags' field
+    file_path: str  # Absolute path to the .md file
+    modified: str  # Last modified date (YYYY-MM-DD)
     fields: list[FrontmatterField] = field(default_factory=list)
     # All non-title, non-tags fields with kind classification.
     # Used for drill-down expansion in keypi_pmb.
@@ -132,6 +135,8 @@ def scan_folder(folder: str) -> list[PmmResult]:
                 continue
             if _JIRA_KEY_EXACT.match(v):
                 kind = "jira_key"
+            elif k == "page" and _CONFLUENCE_PAGE_ID_EXACT.match(v):
+                kind = "confluence_page_id"
             elif _ISO_DATE_EXACT.match(v):
                 kind = "iso_date"
             else:
@@ -273,7 +278,9 @@ def _parse_frontmatter(content: str) -> dict:
         if ":" not in line:
             continue
         key, _, val = line.partition(":")
-        result[key.strip().lower()] = val.strip()
+        # Strip inline comments: "FOO-123  # some comment" → "FOO-123"
+        val = re.sub(r"\s+#.*$", "", val).strip()
+        result[key.strip().lower()] = val
 
     # Parse tags: [foo-imp, bar-main] → ['foo-imp', 'bar-main']
     if "tags" in result:

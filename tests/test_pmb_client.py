@@ -566,3 +566,52 @@ class TestGetSetting:
         client = _make_client_with_conn(conn)
         assert client.get_setting("atlassian_url") is None
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Tests: get_confluence_page
+# ---------------------------------------------------------------------------
+
+
+class TestGetConfluencePage:
+    def test_returns_node_detail_for_existing_page(self, db_conn):
+        _insert_node(
+            db_conn,
+            id="confluence:76934384",
+            type_="confluence_page",
+            source="confluence",
+            key="76934384",
+            title="Design Document Foobar",
+            url="https://acme.atlassian.net/wiki/pages/76934384",
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        detail = client.get_confluence_page("76934384")
+        assert detail is not None
+        assert isinstance(detail, NodeDetail)
+        assert detail.key == "76934384"
+        assert detail.title == "Design Document Foobar"
+        assert "76934384" in detail.url
+
+    def test_returns_none_for_missing_page(self, db_conn):
+        client = _make_client_with_conn(db_conn)
+        assert client.get_confluence_page("99999999") is None
+
+    def test_does_not_return_jira_nodes(self, db_conn):
+        """Jira nodes with numeric-looking keys are not returned."""
+        _insert_node(
+            db_conn,
+            id="jira:PROJ-numeric",
+            type_="story",
+            source="jira",
+            key="76934384",
+            title="Should Not Match",
+            url="https://acme.atlassian.net/browse/PROJ-1",
+        )
+        db_conn.commit()
+        client = _make_client_with_conn(db_conn)
+        assert client.get_confluence_page("76934384") is None
+
+    def test_returns_none_when_db_closed(self):
+        client = PmbClient(":memory:")
+        assert client.get_confluence_page("76934384") is None
