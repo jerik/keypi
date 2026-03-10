@@ -54,6 +54,11 @@ _ISO_DATE_EXACT = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # Confluence page ID: purely numeric (e.g. 76934384)
 _CONFLUENCE_PAGE_ID_EXACT = re.compile(r"^\d+$")
 
+# List of Jira keys: [KEY-123] or [KEY-123, BAR-456]
+_JIRA_KEY_LIST_RE = re.compile(
+    r"^\[([A-Z][A-Z0-9]+-\d+(?:\s*,\s*[A-Z][A-Z0-9]+-\d+)*)\]$"
+)
+
 
 @dataclass
 class FrontmatterField:
@@ -139,6 +144,8 @@ def scan_folder(folder: str) -> list[PmmResult]:
                 kind = "confluence_page_id"
             elif _ISO_DATE_EXACT.match(v):
                 kind = "iso_date"
+            elif _JIRA_KEY_LIST_RE.match(v):
+                kind = "jira_key_list"
             else:
                 kind = "text"
             fields.append(FrontmatterField(name=k, value=v, kind=kind))
@@ -222,6 +229,9 @@ def format_pmm_short_desc(result: PmmResult) -> str:
     parts = []
 
     jira_keys = [f.value for f in result.fields if f.kind == "jira_key"]
+    for f in result.fields:
+        if f.kind == "jira_key_list":
+            jira_keys.extend(parse_jira_key_list(f.value))
     if jira_keys:
         parts.append(", ".join(jira_keys))
 
@@ -239,6 +249,14 @@ def format_pmm_short_desc(result: PmmResult) -> str:
 # ---------------------------------------------------------------------------
 
 
+def parse_jira_key_list(value: str) -> list[str]:
+    """Parse '[KEY-1, KEY-2]' into ['KEY-1', 'KEY-2']."""
+    m = _TAGS_LIST_RE.search(value)
+    if not m:
+        return []
+    return [k.strip() for k in m.group(1).split(",") if k.strip()]
+
+
 def _build_searchable(result: PmmResult) -> str:
     """Build lowercase searchable string for a PmmResult."""
     parts = [
@@ -248,9 +266,12 @@ def _build_searchable(result: PmmResult) -> str:
         (result.initiative.lower() if result.initiative else ""),
         " ".join(result.tags).lower(),
     ]
-    # Include all field values in search
+    # Include all field values in search; expand jira_key_list entries
     for f in result.fields:
-        parts.append(f.value.lower())
+        if f.kind == "jira_key_list":
+            parts.extend(k.lower() for k in parse_jira_key_list(f.value))
+        else:
+            parts.append(f.value.lower())
     return " ".join(parts)
 
 

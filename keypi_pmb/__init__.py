@@ -10,6 +10,7 @@ from __future__ import (
 
 import json
 import os
+from urllib.parse import quote
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -18,11 +19,13 @@ from .lib.pmb_client import PmbClient, format_label, format_short_desc
 from .lib.pmm_client import (
     _parse_frontmatter_lines,
     _JIRA_KEY_EXACT,
+    _JIRA_KEY_LIST_RE,
     _ISO_DATE_EXACT,
     _CONFLUENCE_PAGE_ID_EXACT,
     filter_pmm,
     format_pmm_label,
     format_pmm_short_desc,
+    parse_jira_key_list,
     scan_folder,
     search_pmm,
 )
@@ -44,7 +47,7 @@ class PmBuddy(kp.Plugin):
                Tab on PMM result → drill-down to linked Jira tickets / dates
     """
 
-    VERSION = "1.0.0-dev.7"
+    VERSION = "1.0.0-dev.8"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1
@@ -53,6 +56,7 @@ class PmBuddy(kp.Plugin):
     ITEMCAT_PMM = kp.ItemCategory.USER_BASE + 4  # Local PMM file results
     ITEMCAT_PMM_DETAIL = kp.ItemCategory.USER_BASE + 5  # Drill-down: Jira tickets
     ITEMCAT_PMM_DATE = kp.ItemCategory.USER_BASE + 6  # Drill-down: ISO date fields
+    ITEMCAT_PMM_TEXT = kp.ItemCategory.USER_BASE + 7  # Drill-down: generic text fields
 
     # Modes
     MODE_INPUT = "input"
@@ -111,6 +115,16 @@ class PmBuddy(kp.Plugin):
                     name="copy_date",
                     label="Copy date",
                     short_desc="Copy date to clipboard",
+                ),
+            ],
+        )
+        self.set_actions(
+            self.ITEMCAT_PMM_TEXT,
+            [
+                self.create_action(
+                    name="copy",
+                    label="Copy",
+                    short_desc="Copy value to clipboard",
                 ),
             ],
         )
@@ -298,6 +312,14 @@ class PmBuddy(kp.Plugin):
             self._reset_to_input_mode()
             return
 
+        # --- PMM drill-down: generic text field ---
+        if item.category() == self.ITEMCAT_PMM_TEXT:
+            text_value = item.data_bag()
+            if text_value:
+                kpu.set_clipboard(text_value)
+            self._reset_to_input_mode()
+            return
+
         # --- Shortcuts ---
         if item.category() == self.ITEMCAT_SHORTCUT:
             if item.target() == "edit_config":
@@ -473,7 +495,7 @@ class PmBuddy(kp.Plugin):
                     detail = self._client.get_node_by_key(field_value)
 
                 if detail:
-                    label = f"{detail.key} {detail.title[:30]}"
+                    label = f"{detail.key} {detail.title[:60]}"
                     url = detail.url
                 else:
                     # Not in DB — show key only, construct fallback URL
@@ -502,7 +524,7 @@ class PmBuddy(kp.Plugin):
                     detail = self._client.get_confluence_page(field_value)
 
                 if detail:
-                    label = detail.title[:30]
+                    label = detail.title[:60]
                     url = detail.url
                 else:
                     label = f"Page {field_value}"
@@ -530,6 +552,42 @@ class PmBuddy(kp.Plugin):
                         category=self.ITEMCAT_PMM_DATE,
                         label=f"{field_name}: {field_value}",
                         short_desc="Press Enter to copy date to clipboard",
+                        target=field_value,
+                        data_bag=field_value,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+
+            elif _JIRA_KEY_LIST_RE.match(field_value):
+                # List of Jira keys → open as JQL query in browser
+                keys = parse_jira_key_list(field_value)
+                keys_str = ", ".join(keys)
+                jql = f"key in ({keys_str})"
+                if atlassian_url:
+                    url = f"{atlassian_url.rstrip('/')}/issues/?jql={quote(jql)}"
+                else:
+                    url = ""
+
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_PMM_DETAIL,
+                        label=f"{field_name}: {keys_str}",
+                        short_desc=f"Open JQL: {jql}",
+                        target=field_value,
+                        data_bag=url,
+                        args_hint=kp.ItemArgsHint.FORBIDDEN,
+                        hit_hint=kp.ItemHitHint.IGNORE,
+                    )
+                )
+
+            elif field_value:
+                # Generic text field (e.g. golive: 2026.Q2) → copy to clipboard
+                suggestions.append(
+                    self.create_item(
+                        category=self.ITEMCAT_PMM_TEXT,
+                        label=f"{field_name}: {field_value}",
+                        short_desc="Press Enter to copy value to clipboard",
                         target=field_value,
                         data_bag=field_value,
                         args_hint=kp.ItemArgsHint.FORBIDDEN,
