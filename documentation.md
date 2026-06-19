@@ -18,6 +18,7 @@ KeyPi ist eine Sammlung von Keypirinha-Plugins für Produktivität und Atlassian
 - **KeyPi-US**: User Search - Nutzersuche via Jira Cloud API
 - **KeyPi-Mindbox**: Mindbox - Lokale .mb Dateien durchsuchen und öffnen
 - **KeyPi-PMB**: PM-Buddy - Knowledge-Graph durchsuchen (Jira + Confluence, offline)
+- **KeyPi-ChromeHistory**: Chrome History - Browser-History in Keypirinha durchsuchen
 
 **Gemeinsame Funktionen:**
 - Ergebnisse als filterbare Liste
@@ -1064,4 +1065,98 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev
+# 🌐 Chrome History (CH)
+
+**Chrome History Version:** 1.0.0  
+**Keyword:** `ch`
+
+## Funktionen
+- Chrome-Browser-History in Keypirinha durchsuchen
+- Fuzzy-Suche auf Seitentitel
+- URL im Browser öffnen (Enter)
+- URL in Zwischenablage kopieren (Tab → Copy URL)
+- Vollständig konfigurierbar via INI
+
+## Voraussetzungen
+- Google Chrome (oder Chromium-basierter Browser)
+- `uv` installiert (https://docs.astral.sh/uv/getting-started/installation/)
+- Windows Task Scheduler (für automatische Aktualisierung)
+
+## Manuelle Installation
+1. Kopiere `keypi_chromehistory/` nach:
+   - **Standard:** `%APPDATA%\Keypirinha\InstalledPackages\`
+   - **Portable:** `<Keypirinha>\portable\Profile\InstalledPackages\`
+
+## Konfiguration
+
+Erstelle: `%APPDATA%\Keypirinha\User\keypi_chromehistory.ini`
+
+```ini
+[main]
+keyword = ch
+csv_path = %USERPROFILE%\Documents\tmp\chrome-history-clean.csv
+
+[preprocess]
+chrome_db = %LOCALAPPDATA%\Google\Chrome\User Data\Default\History
+output_csv = %USERPROFILE%\Documents\tmp\chrome-history-clean.csv
+# Nur URLs mit diesem Muster anzeigen (leer = alle)
+url_filter =
+
+[filter_out_titles]
+# Kommaseparierte Titel-Muster die ausgeblendet werden
+exclude = Login, Anmelden
+
+[filter_out_urls]
+# Kommaseparierte URL-Muster die ausgeblendet werden
+exclude = editpage, createpage, edit-v2
+```
+
+## Preprocessing einrichten
+
+Das Preprocessing-Script konvertiert Chromes SQLite-DB in eine saubere CSV-Datei.
+
+### Einmalig manuell ausführen
+
+```bat
+cd %APPDATA%\Keypirinha\InstalledPackages\keypi_chromehistory
+uv run chrome_history_preprocess.py
+```
+
+### Automatisch via Windows Task Scheduler
+
+1. `Win + R` → `taskschd.msc`
+2. Neue Aufgabe erstellen:
+   - **Name:** Chrome History Preprocess
+   - **Auslöser:** Bei Anmeldung (oder nach Zeitplan, z.B. stündlich)
+   - **Aktion:** Programm/Skript
+     ```
+     Programm:  uv
+     Argumente: run chrome_history_preprocess.py
+     Startordner: %APPDATA%\Keypirinha\InstalledPackages\keypi_chromehistory
+     ```
+
+### Mit eigenem INI-Pfad
+
+```bat
+uv run chrome_history_preprocess.py --config C:\path\to\keypi_chromehistory.ini
+```
+
+## Verwendung
+
+1. Keypirinha öffnen
+2. `ch` tippen → Tab
+3. Suchbegriff eingeben (Fuzzy-Suche auf Titel)
+4. `Enter` → URL im Browser öffnen
+5. `Tab` → Aktionen: **Open in browser** / **Copy URL**
+
+## Fehlersuche
+
+| Problem | Lösung |
+|---------|--------|
+| Keine Einträge sichtbar | Preprocessing-Script manuell ausführen |
+| CSV nicht gefunden | `csv_path` in INI prüfen, Ordner erstellen |
+| Chrome DB nicht gefunden | Chrome installiert? `chrome_db` Pfad in INI prüfen |
+
+---
+
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev | CH v1.0.0

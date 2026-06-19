@@ -653,6 +653,57 @@ self.create_item(
 
 ---
 
+## 🧪 Testing Keypirinha Plugins (pytest + uv)
+
+### The `keypirinha` Module Problem
+- ⚠️ **Pitfall**: `keypirinha` only exists inside Keypirinha's embedded Python runtime
+- ⚠️ **Pitfall**: pytest tries to import `__init__.py` as a package init when `tests/` is inside the plugin dir
+- 🔧 **Solution**: Guard all `keypirinha` imports in `__init__.py` with `try/except ImportError` and provide a minimal stub
+  ```python
+  try:
+      import keypirinha as kp
+      import keypirinha_util as kpu
+      _KEYPIRINHA_AVAILABLE = True
+  except ImportError:
+      import types
+      _stub = types.SimpleNamespace
+      kp = _stub(
+          Plugin=object,
+          ItemCategory=_stub(KEYWORD=0, USER_BASE=1000),
+          ItemArgsHint=_stub(REQUIRED=0, FORBIDDEN=1, ACCEPTED=2),
+          ...
+      )
+      _KEYPIRINHA_AVAILABLE = False
+  ```
+- 💡 **Lesson (CH v1.0.0)**: The stub makes `__init__.py` safely importable outside Keypirinha — needed for pytest and linting
+
+### pytest Configuration for Plugin Projects
+- ✅ **DO**: Add `conftest.py` at plugin root with `collect_ignore = ["__init__.py"]`
+- ✅ **DO**: Set `pythonpath = ["."]` and `addopts = "--import-mode=importlib"` in pyproject.toml
+- ✅ **DO**: Place `pyproject.toml` inside the plugin directory for isolated test environment
+- ❌ **DON'T**: Add `__init__.py` to `tests/` — it causes pytest to traverse parent packages
+- 💡 **Lesson (CH v1.0.0)**: `importmode=importlib` + `conftest.py` collect_ignore solves the pytest/package collision
+
+### Testable Architecture for Plugins with Preprocessing
+- ✅ **DO**: Split preprocessing logic into a separate script (`chrome_history_preprocess.py`)
+- ✅ **DO**: Test the preprocessing script's pure functions (filter, dedup, export)
+- ✅ **DO**: Skip testing the plugin class itself (it needs Keypirinha runtime)
+- ✅ **DO**: Use `uv run pytest` for local test execution
+- ✅ **DO**: Use only stdlib in preprocessing (no pandas, no external deps)
+- ❌ **DON'T**: Use external tools (sqlite3 CLI, pandas) for data processing — stdlib sqlite3 is faster and simpler
+- 💡 **Lesson (CH v1.0.0)**: Pure function tests cover 100% of the testable logic without mocking Keypirinha
+
+### Chrome History-Specific
+- ✅ **DO**: Copy Chrome's DB before reading — Chrome locks the file while running
+  ```python
+  shutil.copy2(source, tmp_path)  # Read from copy, not original
+  ```
+- ✅ **DO**: Use `target=f"ch_{idx}"` for history items — avoids `.format()` crash on `{` in titles
+- ✅ **DO**: Store URL in `data_bag`, not in `short_desc` — cleaner data access in `on_execute()`
+- 💡 **Lesson (CH v1.0.0)**: Chrome history titles can contain `{`, `}` — never use `.format()` on them
+
+---
+
 ## 📂 Local File-Based Plugins
 
 ### No API Client Needed
@@ -674,6 +725,7 @@ self.create_item(
 ---
 
 **Version History:**
+- **2026-06-19**: CH v1.0.0 (Chrome History - preprocessing script, pytest+uv setup, keypirinha stub pattern)
 - **2026-02-27**: PMB v1.0.0-dev (Direct SQLite access, FTS5 quoting, Tab Drill-Down, Frontmatter parsing)
 - **2026-02-27**: PMB v1.0.0-dev.5 fix (Tab-Chaining auf PMM-Items: loop_on_suggest=True fehlte)
 - **2026-02-09**: MB v1.0.0 release (Mindbox - local file browser, no API needed)
