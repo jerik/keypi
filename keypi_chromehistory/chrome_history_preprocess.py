@@ -11,6 +11,7 @@ Usage:
 import argparse
 import configparser
 import csv
+import gc
 import os
 import shutil
 import sqlite3
@@ -173,8 +174,17 @@ def main():
         print(f"Exported to: {output_csv}")
 
     finally:
-        if tmp_db and os.path.exists(tmp_db):
-            os.remove(tmp_db)
+        if tmp_db:
+            # On Windows, SQLite WAL mode can keep a file handle open briefly
+            # after conn.close(). Force GC to release any lingering references.
+            gc.collect()
+            for suffix in ("", "-wal", "-shm"):
+                path = tmp_db + suffix
+                if os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except PermissionError:
+                        print(f"Note: temp file will be removed by OS: {path}")
             print("Cleaned up temp DB.")
 
 
