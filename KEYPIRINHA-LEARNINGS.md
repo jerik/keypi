@@ -684,6 +684,17 @@ self.create_item(
 - ❌ **DON'T**: Add `__init__.py` to `tests/` — it causes pytest to traverse parent packages
 - 💡 **Lesson (CH v1.0.0)**: `importmode=importlib` + `conftest.py` collect_ignore solves the pytest/package collision
 
+### Keypirinha Imports ALL .py Files in Plugin Directory
+- ⚠️ **Pitfall**: Keypirinha imports every `.py` file in the plugin package, not just `__init__.py`
+- ⚠️ **Pitfall**: Keypirinha's embedded Python may be older than 3.10 — `str | None` union syntax fails at runtime
+- 🔧 **Solution**: Add `from __future__ import annotations` to any `.py` file in the plugin dir
+  ```python
+  from __future__ import annotations  # Must be the first statement after the docstring
+  ```
+- ✅ **DO**: Guard standalone scripts with `if __name__ == "__main__":` AND use `from __future__ import annotations`
+- ❌ **DON'T**: Use `X | Y` type union syntax in any file Keypirinha might import (runtime eval fails pre-3.10)
+- 💡 **Lesson (CH v1.0.0-dev.5)**: `from __future__ import annotations` makes all hints lazy strings → safe on any Python 3.7+
+
 ### Testable Architecture for Plugins with Preprocessing
 - ✅ **DO**: Split preprocessing logic into a separate script (`chrome_history_preprocess.py`)
 - ✅ **DO**: Test the preprocessing script's pure functions (filter, dedup, export)
