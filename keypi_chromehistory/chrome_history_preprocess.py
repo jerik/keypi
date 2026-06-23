@@ -18,12 +18,35 @@ import sqlite3
 import tempfile
 
 
-DEFAULT_CONFIG_PATH = os.path.join(
-    os.environ.get("APPDATA", ""),
-    "Keypirinha",
-    "User",
-    "keypi_chromehistory.ini",
-)
+# Script location – used to auto-detect portable Keypirinha installs
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Candidate config locations, checked in order:
+#   1. Portable Keypirinha: script lives in Profile/Packages/keypi_chromehistory/
+#      → config is at                 Profile/User/keypi_chromehistory.ini
+#   2. Standard Keypirinha install:   %APPDATA%/Keypirinha/User/...
+_CONFIG_CANDIDATES = [
+    os.path.normpath(
+        os.path.join(_SCRIPT_DIR, "..", "..", "User", "keypi_chromehistory.ini")
+    ),
+    os.path.join(
+        os.environ.get("APPDATA", ""),
+        "Keypirinha",
+        "User",
+        "keypi_chromehistory.ini",
+    ),
+]
+
+
+def find_config(explicit: str | None) -> str:
+    """Return the config path to use, searching known locations if not explicit."""
+    if explicit:
+        return explicit
+    for candidate in _CONFIG_CANDIDATES:
+        if os.path.exists(candidate):
+            return candidate
+    # Fall back to portable path (will trigger a warning in main)
+    return _CONFIG_CANDIDATES[0]
 
 
 def resolve_path(path: str) -> str:
@@ -126,12 +149,18 @@ def main():
     )
     parser.add_argument(
         "--config",
-        default=DEFAULT_CONFIG_PATH,
-        help="Path to keypi_chromehistory.ini",
+        default=None,
+        help="Path to keypi_chromehistory.ini (auto-detected if omitted)",
     )
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config_path = find_config(args.config)
+    if os.path.exists(config_path):
+        print(f"Config:  {config_path}")
+    else:
+        print("Warning: config not found, using built-in defaults.")
+        print(f"         Searched: {', '.join(_CONFIG_CANDIDATES)}")
+    config = load_config(config_path)
 
     chrome_db = config.get(
         "preprocess",
