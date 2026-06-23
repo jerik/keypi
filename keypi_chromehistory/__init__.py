@@ -32,7 +32,7 @@ except ImportError:
 class ChromeHistory(kp.Plugin):
     """Search Chrome browser history from Keypirinha."""
 
-    VERSION = "1.0.0-dev.4"
+    VERSION = "1.0.0-dev.5"
 
     ITEMCAT_RESULT = kp.ItemCategory.USER_BASE + 1
 

@@ -8,6 +8,8 @@ Usage:
     uv run chrome_history_preprocess.py --config C:\\path\\to\\keypi_chromehistory.ini
 """
 
+from __future__ import annotations
+
 import argparse
 import configparser
 import csv
