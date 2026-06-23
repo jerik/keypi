@@ -55,7 +55,8 @@ def resolve_path(path: str) -> str:
 
 
 def load_config(config_path: str) -> configparser.ConfigParser:
-    config = configparser.ConfigParser()
+    # interpolation=None: treat % literally so %USERPROFILE% etc. are not mangled
+    config = configparser.ConfigParser(interpolation=None)
     config.read(config_path, encoding="utf-8")
     return config
 
