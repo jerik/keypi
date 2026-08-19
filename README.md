@@ -47,6 +47,18 @@ Search for users via Jira Cloud API and quickly open Teams chat or user profiles
 - 🎨 Configurable keyword (default: `us`)
 - 🎯 Multi-Action Support: Teams Chat, Open Profile
 
+### ⏱️ WorkLog (WL)
+Turn Windows logon events into working hours and append them to a journal file.
+
+**Key Features:**
+- 📅 Lists the recent logon events with weekday, date and calendar week
+- ⏱️ Working time from logon to logoff, rounded to 15 minutes
+- ☕ Break variants in one keystroke (no break, 1h, 1,5h - configurable)
+- 📝 Appends the result to a journal file
+- ⚠️ Warns when the day was already logged
+- 🎨 Configurable keyword (default: `wl`)
+- 🌍 Works offline, no API and no `locale` dependency
+
 **Shared Features:**
 - 🔐 Secure API token authentication
 - 🔄 Shared Atlassian credentials across plugins
@@ -162,6 +174,45 @@ history_max_entries = 30
 ```
 
 **💡 Tip:** You can use the same credentials for all three plugins!
+
+### WorkLog Plugin Configuration
+
+Create: `%APPDATA%\Keypirinha\User\keypi_worklog.ini`
+
+```ini
+[main]
+# Keyword to trigger the plugin (default: wl)
+keyword = wl
+
+# Windows event log export with the logon/logoff events
+# Default: <Documents>\logs\winevent.log
+winevent_log = C:\Users\YourName\Documents\logs\winevent.log
+
+# Journal file the working hours are appended to
+# Default: <Documents>\logs\Journal.log
+journal_file = C:\Users\YourName\Documents\logs\Journal.log
+
+# Break variants in minutes (default: 0, 60, 90)
+break_options = 0, 60, 90
+
+# Rounding of the working time in minutes (default: 15)
+rounding_minutes = 15
+
+# Number of logon events in the list (default: 30)
+max_entries = 30
+
+# Wording of the event log, adjust for non-German Windows
+event_source = EventLog
+event_start_marker = gestartet
+event_stop_marker = beendet
+
+# Journal templates
+# Placeholders: {weekday} {date} {time} {clock} {week} {hours}
+journal_header = # {weekday} {date} {time}
+journal_entry = @arbeitsstunden am {date}: {hours}
+```
+
+**💡 Note:** WorkLog needs no credentials, it only reads local files.
 
 ---
 
@@ -357,6 +408,61 @@ Each user result offers multiple actions via Tab:
 **Usage:**
 - Select user → **Tab** → Action menu appears
 - Select action → **Enter** → Action executes
+
+### WorkLog (WL)
+
+#### Basic Workflow
+
+1. **Open Keypirinha** and type: `wl`
+2. **Press Tab** to list the recent logon events:
+   ```
+   Mi 09:04    2026-08-19 · KW 34 · läuft · bisher 8h 05m
+   Di 08:10    2026-08-18 · KW 34 · bis 17:28 · 9h 18m
+   ```
+3. **Press Tab** on an entry to see the working time variants:
+   ```
+   8h · ohne Pause      09:04-17:09 · 8h 00m gerundet
+   7h · 1h Pause        09:04-17:09 · 8h 00m gerundet minus 1h
+   6,5h · 1,5h Pause    09:04-17:09 · 8h 00m gerundet minus 1,5h
+   ```
+4. **Press Enter** to append the entry to the journal file:
+   ```
+   # Mi 2026-08-19 1709:44
+   @arbeitsstunden am 2026-08-19: 7h
+   ```
+
+#### How the working time is calculated
+
+- The session ends at the **logoff event**; a session that is still open ends
+  at the **current time**
+- The **difference** is rounded to the nearest 15 minutes, not the start and
+  end separately: 09:04 to 17:09 is 8h05m and becomes 8h
+- The break is subtracted afterwards
+
+#### Multi-Action Menu
+
+1. **Write journal entry** - append to the journal file (default action)
+2. **Copy entry to clipboard** - copy instead of write
+
+#### Shortcuts
+
+```
+wl → #edit      # Open the configuration file
+wl → #journal   # Open the journal file
+wl → #source    # Open the event log export
+```
+
+#### Producing the event log export
+
+WorkLog reads a text export of the Windows event log, newest entry first:
+
+```
+   35735 Aug 19 09:04  Information EventLog   2147489653 Der Ereignisprotokolldienst wurde gestartet.
+   35724 Aug 18 17:28  Information EventLog   2147489654 Der Ereignisprotokolldienst wurde beendet.
+```
+
+Any scheduled export that produces this layout works. Lines from other event
+sources are ignored, even when they contain the same wording.
 
 ---
 

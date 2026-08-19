@@ -18,6 +18,7 @@ KeyPi ist eine Sammlung von Keypirinha-Plugins für Produktivität und Atlassian
 - **KeyPi-US**: User Search - Nutzersuche via Jira Cloud API
 - **KeyPi-Mindbox**: Mindbox - Lokale .mb Dateien durchsuchen und öffnen
 - **KeyPi-PMB**: PM-Buddy - Knowledge-Graph durchsuchen (Jira + Confluence, offline)
+- **KeyPi-WorkLog**: Arbeitszeiten aus dem Windows-Eventlog ins Journal eintragen
 
 **Gemeinsame Funktionen:**
 - Ergebnisse als filterbare Liste
@@ -1064,4 +1065,216 @@ Keypirinha-Konsole: `F2`
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev
+# ⏱️ WorkLog (WL)
+
+## Funktionen
+- Zeigt die letzten Anmeldezeitpunkte aus einem Windows-Eventlog-Export
+- Berechnet die Arbeitszeit von der An- bis zur Abmeldung, gerundet auf 15 Minuten
+- Bietet die Arbeitszeit wahlweise mit oder ohne Pause an (konfigurierbar)
+- Hängt den gewählten Wert an eine Journal-Datei an
+- Warnt, wenn für den Tag bereits ein Eintrag existiert
+- Arbeitet komplett offline, ohne API und ohne `locale`
+
+Ersetzt das experimentelle Plugin `file_lookup`.
+
+---
+
+## 🚀 Installation (WorkLog)
+
+### Voraussetzungen
+- Keypirinha (https://keypirinha.com)
+- Ein Textexport des Windows-Eventlogs (siehe unten)
+
+### Manuelle Installation
+1. Kopiere `keypi_worklog/` nach:
+   - **Standard:** `%APPDATA%\Keypirinha\InstalledPackages\`
+   - **Portable:** `<Keypirinha>\portable\Profile\InstalledPackages\`
+
+---
+
+## ⚙️ Konfiguration (WorkLog)
+
+Erstelle: `%APPDATA%\Keypirinha\User\keypi_worklog.ini` (bzw. Portable-Pfad)
+
+```ini
+[main]
+# Keyword zum Aufruf des Plugins (Standard: wl)
+keyword = wl
+
+# Eventlog-Export mit den An-/Abmelde-Events
+# Standard: <Dokumente>\logs\winevent.log
+winevent_log = C:\Users\DeinName\Documents\logs\winevent.log
+
+# Journal-Datei, an die die Arbeitszeit angehängt wird
+# Datei und Ordner werden bei Bedarf angelegt
+# Standard: <Dokumente>\logs\Journal.log
+journal_file = C:\Users\DeinName\Documents\logs\Journal.log
+
+# Pausen-Varianten in Minuten (Standard: 0, 60, 90)
+break_options = 0, 60, 90
+
+# Rundung der Arbeitszeit in Minuten (1-60, Standard: 15)
+rounding_minutes = 15
+
+# Anzahl der angezeigten Anmeldungen (1-500, Standard: 30)
+max_entries = 30
+
+# Formulierungen im Eventlog, anpassbar für nicht-deutsches Windows
+event_source = EventLog
+event_start_marker = gestartet
+event_stop_marker = beendet
+
+# Vorlagen für den Journal-Eintrag
+# Platzhalter: {weekday} Mo-So, {date} YYYY-MM-DD, {time} HHMM:SS,
+#              {clock} HH:MM, {week} KW, {hours} z.B. 7h
+journal_header = # {weekday} {date} {time}
+journal_entry = @arbeitsstunden am {date}: {hours}
+```
+
+Alle Werte sind optional. Ohne Konfigurationsdatei sucht das Plugin die
+Dateien in `<Dokumente>\logs\`.
+
+Keypirinha neu starten: `Ctrl + Alt + R`
+
+---
+
+## 💻 Verwendung (WorkLog)
+
+### Basis-Workflow
+
+1. Tippe: `wl` → `Tab`
+2. Die letzten Anmeldungen werden angezeigt, neueste zuerst:
+   ```
+   Mi 09:04    2026-08-19 · KW 34 · läuft · bisher 8h 05m
+   Di 08:10    2026-08-18 · KW 34 · bis 17:28 · 9h 18m
+   Mo 09:14    2026-08-17 · KW 34 · bis 16:41 · 7h 27m
+   ```
+3. Weiter tippen → Liste wird gefiltert (z.B. `2026-08-18` oder `Di`)
+4. `Tab` auf einem Eintrag → Arbeitszeit-Varianten:
+   ```
+   8h · ohne Pause      09:04-17:09 · 8h 00m gerundet
+   7h · 1h Pause        09:04-17:09 · 8h 00m gerundet minus 1h
+   6,5h · 1,5h Pause    09:04-17:09 · 8h 00m gerundet minus 1,5h
+   ```
+5. `Enter` → Eintrag wird an die Journal-Datei angehängt:
+   ```
+   # Mi 2026-08-19 1709:44
+   @arbeitsstunden am 2026-08-19: 7h
+   ```
+
+### Berechnung der Arbeitszeit
+
+- **Ende der Session:** das zugehörige Abmelde-Event. Läuft die Session noch
+  (heutiger Tag), wird die **aktuelle Uhrzeit** verwendet.
+- **Rundung:** die **Differenz** wird auf 15 Minuten kaufmännisch gerundet,
+  nicht Start und Ende einzeln. 09:04 bis 17:09 sind 8h 05m und werden zu 8h.
+- **Pause:** wird anschliessend abgezogen. Varianten, bei denen keine
+  Arbeitszeit übrig bleibt, werden nicht angezeigt.
+- Jede Anmeldung ist ein eigener Eintrag. Wer mittags aus- und wieder
+  einloggt, sieht für den Tag zwei Einträge und wählt den passenden aus.
+
+### Anzeige-Format
+
+| Teil | Bedeutung |
+|------|-----------|
+| `Mi 09:04` | Wochentag und Uhrzeit der Anmeldung |
+| `2026-08-19` | Datum der Anmeldung |
+| `KW 34` | ISO-Kalenderwoche |
+| `läuft · bisher 8h 05m` | Session ist offen, Zeit bis jetzt |
+| `bis 17:28 · 9h 18m` | Abmeldezeit und Dauer |
+| `kein Abmelde-Event im Log` | Session wurde nie sauber beendet |
+
+### Multi-Action Support
+
+`Tab` auf einer Arbeitszeit-Variante öffnet das Aktionsmenü:
+
+1. **Write journal entry** - Eintrag anhängen (Standardaktion mit `Enter`)
+2. **Copy entry to clipboard** - Eintrag nur in die Zwischenablage kopieren
+
+### Doppelte Einträge
+
+Existiert für den Tag bereits ein Eintrag im Journal, steht in der
+Beschreibung `ACHTUNG: bereits erfasst (7h)`. Der Eintrag lässt sich trotzdem
+schreiben - korrigiert wird von Hand in der Journal-Datei.
+
+### Shortcuts
+
+| Shortcut | Wirkung |
+|----------|---------|
+| `#edit` | Konfigurationsdatei öffnen |
+| `#journal` | Journal-Datei öffnen |
+| `#source` | Eventlog-Export öffnen |
+
+---
+
+## 📄 Eventlog-Export erzeugen
+
+Das Plugin liest einen Textexport, neueste Zeile zuerst:
+
+```
+   35735 Aug 19 09:04  Information EventLog   2147489653 Der Ereignisprotokolldienst wurde gestartet.
+   35724 Aug 18 17:28  Information EventLog   2147489654 Der Ereignisprotokolldienst wurde beendet.
+```
+
+Relevant sind nur Zeilen, die sowohl die Quelle (`event_source`) als auch
+eine der Formulierungen (`event_start_marker`, `event_stop_marker`)
+enthalten. Zeilen anderer Quellen werden ignoriert, auch wenn sie dieselben
+Wörter enthalten ("Ein Dienst wurde erfolgreich gestartet").
+
+Der Export enthält **kein Jahr**. Das Plugin leitet es aus der Sortierung ab:
+Steigt das Datum gegenüber der Zeile davor, gehört der Eintrag ins Vorjahr.
+
+Encoding: UTF-8, UTF-16 und CP1252 werden erkannt.
+
+---
+
+## 🔧 Troubleshooting (WorkLog)
+
+### "Event log not configured"
+- `winevent_log` in `keypi_worklog.ini` setzen (`#edit`)
+
+### "Event log not found"
+- Pfad prüfen, Backslashes müssen nicht escaped werden
+- Läuft der Task, der den Export erzeugt?
+
+### "No logon events found"
+- Stimmen `event_source`, `event_start_marker` und `event_stop_marker` mit
+  der Sprache des Systems überein?
+
+### Falsches Datum bei alten Einträgen
+- Der Export muss absteigend sortiert sein (neueste Zeile oben)
+
+### Journal wird nicht geschrieben
+- Keypirinha-Konsole öffnen (`F2`), dort steht der Fehler
+- Schreibrechte auf `journal_file` prüfen
+
+---
+
+## 📋 Limits (WorkLog)
+
+- Maximal 500 angezeigte Anmeldungen (`max_entries`)
+- Kein Schreiben in bestehende Journal-Einträge, nur Anhängen
+- Nur Windows (Keypirinha ist Windows-only)
+
+---
+
+## 🔄 Changelog (WorkLog)
+
+### Version 1.0.0 (2026-08-19)
+- **Initial Release:** WorkLog, Nachfolger von `file_lookup`
+- **Neu:** Liste der Anmeldungen mit Wochentag, Datum, KW und Dauer
+- **Neu:** `Tab`-Drill-Down auf Arbeitszeit-Varianten mit Pause
+- **Neu:** Journal-Eintrag per `Enter`, Vorlagen konfigurierbar
+- **Neu:** Warnung bei bereits erfassten Tagen
+- **Neu:** Shortcuts `#edit`, `#journal`, `#source`
+- **Fix:** Falsches Jahr und falscher Wochentag bei Vorjahres-Einträgen
+- **Fix:** Globales `locale.setlocale()` entfernt (betraf alle Plugins)
+- **Fix:** Absturz bei fehlender oder mehrfach konfigurierter Logdatei
+- **Fix:** Shell-Kommando aus der Item-Beschreibung entfernt
+- **Fix:** Blockierendes `subprocess.call()` im UI-Thread entfernt
+- **Fix:** Datei-I/O bei jedem Tastendruck entfernt
+- **Test:** 105 Unit- und Integrationstests
+
+---
+
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev | WL v1.0.0

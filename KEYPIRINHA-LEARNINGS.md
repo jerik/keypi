@@ -673,7 +673,178 @@ self.create_item(
 
 ---
 
+## 🕒 Dates, Times and Locales
+
+### Never call locale.setlocale()
+- ❌ **DON'T**: `locale.setlocale(locale.LC_TIME, "de_DE")` to get German month or
+  weekday names. The setting is **process wide**, so it silently changes date
+  formatting in every other Keypirinha plugin, and it raises `locale.Error`
+  when the locale is not installed on the machine.
+- ✅ **DO**: Use a lookup table
+  ```python
+  WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+  MONTHS = {"jan": 1, "mrz": 3, "mai": 5, "okt": 10, "dez": 12, ...}
+
+  weekday = WEEKDAYS[day.weekday()]
+  month = MONTHS.get(name.lower())
+  ```
+- ✅ **DO**: Accept German **and** English abbreviations - the same log looks
+  different on a German and an English Windows
+- 💡 **Lesson (WL v1.0.0)**: A table is three lines longer and has no side effects
+
+### Logs Without a Year
+- ⚠️ **Pitfall**: Windows event log exports contain `Aug 19 09:04` - no year.
+  Using `date.today().year` puts December entries of last year into this year
+  and therefore on the wrong weekday.
+- ✅ **DO**: Derive the year from the sort order (newest first): whenever
+  month/day of an entry is **later** than the entry before it, a year boundary
+  was crossed
+  ```python
+  year = today.year
+  previous = (today.month, today.day)
+  for month, day in entries:          # newest first
+      if (month, day) > previous:
+          year -= 1
+      previous = (month, day)
+  ```
+- ✅ **DO**: Handle February 29th - step back through years until the date exists
+- 💡 **Lesson (WL v1.0.0)**: Initialising `previous` with today's date also covers
+  the first entry, no special case needed
+
+### Parse Log Lines by Pattern, Not by Column
+- ❌ **DON'T**: `line[9:15]` and `line.split("Information")` - breaks as soon as
+  a record number gets one digit longer
+- ✅ **DO**: One regex with optional leading fields
+  ```python
+  _EVENT_LINE = re.compile(
+      r"^\s*(?:\d+\s+)?([A-Za-zÄÖÜäöüß]{3,4})\s+(\d{1,2})\s+(\d{1,2}):(\d{2})\s+(.+)$"
+  )
+  ```
+- ⚠️ **Pitfall**: Matching only on wording catches foreign events. "Ein Dienst
+  wurde erfolgreich **gestartet**" comes from Service Control Manager, not from
+  the event log service, and would be counted as a workday start.
+- ✅ **DO**: Require the event **source** as well as the wording
+- 💡 **Lesson (WL v1.0.0)**: The test fixture contained exactly that line and
+  caught the bug before the first manual test
+
+### Reading User Files Robustly
+- ✅ **DO**: Detect the encoding instead of assuming UTF-8
+  ```python
+  raw = open(path, "rb").read()
+  if raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff"):
+      return raw.decode("utf-16")        # PowerShell Out-File default
+  for encoding in ("utf-8-sig", "cp1252"):
+      try:
+          return raw.decode(encoding)
+      except UnicodeDecodeError:
+          continue
+  return raw.decode("utf-8", errors="replace")
+  ```
+- 💡 **Lesson (WL v1.0.0)**: A single umlaut in a CP1252 file kills the plugin
+
+---
+
+## ✍️ Writing to User Files
+
+### Appending Without Destroying Anything
+- ✅ **DO**: Open with mode `"a"` - never read/modify/write a file the user edits
+- ✅ **DO**: Create the folder first: `os.makedirs(os.path.dirname(path), exist_ok=True)`
+- ✅ **DO**: Insert a separator only when needed
+  ```python
+  prefix = ""
+  if os.path.isfile(path) and os.path.getsize(path) > 0:
+      existing = read_text_file(path)
+      if not existing.endswith("\n"):
+          prefix = "\n\n"
+      elif not existing.endswith("\n\n"):
+          prefix = "\n"
+  ```
+- ✅ **DO**: Write `"\n"` in text mode - Python turns it into `\r\n` on Windows
+- ✅ **DO**: Warn about duplicates instead of blocking them - the user decides
+- 💡 **Lesson (WL v1.0.0)**: Appending is the only file operation that can never
+  lose user data
+
+### User Supplied Format Templates
+- ✅ **DO**: Let templates live in the INI, with documented placeholders
+  ```ini
+  journal_header = # {weekday} {date} {time}
+  journal_entry = @arbeitsstunden am {date}: {hours}
+  ```
+- ⚠️ **Pitfall**: `"{typo}".format(**values)` raises `KeyError` and kills the action
+- ✅ **DO**: Catch `KeyError`, `IndexError` and `ValueError` and fall back to the
+  default template
+- 💡 **Lesson (WL v1.0.0)**: Every INI value is user input and must not crash the plugin
+
+---
+
+## 🧪 Testing Plugin Code Without Keypirinha
+
+### Keep the Logic Out of the Plugin Class
+- ❌ **DON'T**: Copy the implementation into the test file to make it testable
+  (older tests in this repo do that - the copies drift apart from the original)
+- ✅ **DO**: Put the whole domain logic into `lib/<name>.py` **without importing
+  keypirinha**, and load it by path in the test
+  ```python
+  _SPEC = importlib.util.spec_from_file_location("worklog", MODULE_PATH)
+  worklog = importlib.util.module_from_spec(_SPEC)
+  _SPEC.loader.exec_module(worklog)
+  ```
+- 💡 **Lesson (WL v1.0.0)**: The plugin class shrinks to UI wiring, everything else
+  is covered by fast tests
+
+### Stub the Keypirinha API to Test the Plugin Class
+- ✅ **DO**: Register fake modules in `sys.modules` **before** importing the package
+  ```python
+  kp = types.ModuleType("keypirinha")
+  kp.Plugin = _Plugin                    # base class with load_settings, set_suggestions, ...
+  kp.ItemCategory = types.SimpleNamespace(USER_BASE=100, KEYWORD=1)
+  sys.modules["keypirinha"] = kp
+  ```
+- ⚠️ **Pitfall**: Several test modules stubbing `keypirinha` collide. `setdefault`
+  keeps whichever module pytest imported first, so the plugin can end up
+  inheriting from a stub that has no `load_settings()` - tests pass alone and
+  fail in the full run.
+- 🔧 **Solution**: Make one stub a **superset** and let it always overwrite the entry
+- ✅ **DO**: Assert on the item hints, they are easy to get wrong
+  ```python
+  self.assertTrue(item.hints["loop_on_suggest"])   # Tab drill-down works
+  self.assertNotIn(ITEMCAT_SESSION, plugin.actions)  # actions would block chaining
+  ```
+- 💡 **Lesson (WL v1.0.0)**: 35 stubbed tests cover the state machine end to end
+
+### Anonymised Fixtures Instead of Personal Data
+- ❌ **DON'T**: Commit the user's real log file as a test fixture
+- ✅ **DO**: Generate a fixture with the identical layout but synthetic
+  timestamps, and put the real file in `.gitignore`
+- ✅ **DO**: Build the edge cases into the fixture on purpose: open session,
+  year boundary, midnight crossing, two sessions a day, foreign event source,
+  malformed line
+- 💡 **Lesson (WL v1.0.0)**: The fixture is documentation of what the parser must
+  survive
+
+---
+
+## 📦 Carrying State Between on_suggest() and on_execute()
+
+- ⚠️ **Pitfall**: `on_execute()` gets only the item - no access to what
+  `on_suggest()` computed
+- ❌ **DON'T**: Store the list in `self._something` and index into it - the user
+  may have typed further, filtered or restarted in between
+- ✅ **DO**: Put everything the action needs into `data_bag` as JSON
+  ```python
+  data_bag=json.dumps({"start": start.isoformat(timespec="minutes"),
+                       "end": None, "running": True})
+  ```
+- ✅ **DO**: Recompute time dependent values when the item is used - a running
+  session must not carry the duration from when the list was built
+- ✅ **DO**: Use the `target` for identity (it has to be unique anyway) and the
+  `data_bag` for payload
+- 💡 **Lesson (WL v1.0.0)**: Stateless items survive every UI path the user takes
+
+---
+
 **Version History:**
+- **2026-08-19**: WL v1.0.0 (WorkLog - locale free dates, year inference, file appending, stubbed plugin tests)
 - **2026-02-27**: PMB v1.0.0-dev (Direct SQLite access, FTS5 quoting, Tab Drill-Down, Frontmatter parsing)
 - **2026-02-27**: PMB v1.0.0-dev.5 fix (Tab-Chaining auf PMM-Items: loop_on_suggest=True fehlte)
 - **2026-02-09**: MB v1.0.0 release (Mindbox - local file browser, no API needed)

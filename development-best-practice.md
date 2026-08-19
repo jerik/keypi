@@ -3,6 +3,17 @@
 Quick reference for building new Keypirinha plugins in this project.
 For full details see `KEYPIRINHA-LEARNINGS.md`.
 
+## Plugins in this repository
+
+| Package | Keyword | Purpose | Data source |
+|---------|---------|---------|-------------|
+| `keypi_jqe` | `jqe` | Jira search via JQL | Jira Cloud REST API |
+| `keypi_cqe` | `cqe` | Confluence search via CQL | Confluence Cloud REST API |
+| `keypi_us` | `us` | User search | Jira Cloud REST API |
+| `keypi_mindbox` | `mb` | Open local `.mb` files | Local folder |
+| `keypi_pmb` | `pmb` | Knowledge graph search | Local SQLite + markdown |
+| `keypi_worklog` | `wl` | Log working hours | Local text files |
+
 ---
 
 ## Plugin Structure
@@ -18,6 +29,26 @@ keypi_<name>/
     ├── packages.json    # Package metadata (optional)
     └── changelog/
         └── X.Y.Z.md    # Version changelogs
+```
+
+---
+
+## Layering: Plugin Class vs. lib/
+
+The plugin class does **UI wiring only**: config, items, actions, logging.
+Everything else lives in `lib/` and must **not import keypirinha**, so it can
+be unit tested without the launcher.
+
+| Belongs in `__init__.py` | Belongs in `lib/` |
+|--------------------------|-------------------|
+| `on_start`, `on_catalog`, `on_suggest`, `on_execute`, `on_events` | Parsing, filtering, formatting |
+| `create_item`, `set_suggestions`, `set_actions` | API and file access |
+| Reading the INI | Validating INI values |
+| `self.info/warn/err` | Pure functions, no side effects |
+
+```python
+# keypi_worklog/__init__.py
+from .lib import worklog          # only place that knows keypirinha
 ```
 
 ---
@@ -122,15 +153,54 @@ def on_execute(self, item, action):
 3. **Unique targets** per item (Keypirinha deduplicates same targets)
 4. **Config changes** need `on_catalog()` call to refresh keyword
 5. **loop_on_suggest=True** needed for Tab-chaining (Virtual Query Mode)
+6. **Never call `locale.setlocale()`** - it is process wide and hits every plugin
+7. **Every INI value is user input** - parse defensively, always keep a fallback
+8. **Pass state via `data_bag`** (JSON), never via instance lists indexed by position
 
 ---
 
 ## Testing
 
-- Tests in `tests/test_<name>.py`
-- Copy filter/parsing logic into test for isolated testing
+- Tests in `tests/test_<name>.py`, fixtures in `tests/fixtures/`
 - Run: `pytest` from project root
 - Lint: `ruff check .` and `ruff format --check .`
+
+### Testing lib/ logic (preferred)
+
+Load the module by path - no keypirinha needed, no copied code:
+
+```python
+_SPEC = importlib.util.spec_from_file_location(
+    "worklog", os.path.join(REPO_ROOT, "keypi_worklog", "lib", "worklog.py")
+)
+worklog = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(worklog)
+```
+
+❌ Don't copy the implementation into the test file - the copy drifts away
+from the original (older tests in this repo still do this).
+
+### Testing the plugin class
+
+Register a keypirinha stub in `sys.modules` **before** importing the package,
+see `tests/test_worklog_plugin.py`:
+
+```python
+kp = types.ModuleType("keypirinha")
+kp.Plugin = _Plugin        # fake base class: load_settings, set_suggestions, ...
+kp.ItemCategory = types.SimpleNamespace(USER_BASE=100, KEYWORD=1)
+sys.modules["keypirinha"] = kp     # overwrite, do not setdefault
+```
+
+⚠️ Several test modules stub keypirinha. Using `setdefault` makes the result
+depend on pytest's import order - tests pass alone and fail in the full run.
+One stub has to be a superset and always win.
+
+### Fixtures with personal data
+
+Never commit the user's real files. Generate a fixture with the same layout
+and synthetic content, add the real file to `.gitignore`, and build the edge
+cases into the fixture deliberately.
 
 ---
 
