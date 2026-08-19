@@ -64,7 +64,8 @@ Wenn ich Konzept und Plan freigegeben haben, kannst du mit der Umsetzung anfange
 | Endzeit | **Automatisch**: heute/offene Session → aktuelle Uhrzeit, vergangene Session → zugehöriges `beendet`-Event |
 | Rundung | **Differenz runden**: `Ende - Start` roh rechnen, dann auf 15 Minuten kaufmännisch runden (17:09 - 09:04 = 8h 05m → 8h 00m) |
 | Pausen | **Konfigurierbar** in der INI, Default `0, 60, 90` Minuten |
-| Paket | **Umbenennung** `keypi_filelookup` → `keypi_worklog`, Keyword bleibt `fl` |
+| Paket | **Umbenennung** `keypi_filelookup` → `keypi_worklog` |
+| Keyword | **`wl`** (statt bisher `fl`) |
 
 ## Teil 1 — Review des bestehenden Plugins
 
@@ -127,7 +128,7 @@ Wochentage (`Mo`–`So`) und Monatsnamen (`Jan`–`Dez` deutsch **und** englisch
 
 ## Teil 3 — Zielworkflow
 
-**Schritt 1 — `fl` + Tab**
+**Schritt 1 — `wl` + Tab**
 Liste der letzten Starts, neueste zuerst:
 ```
 Mi 09:04    2026-08-19 · KW 34 · läuft · bisher 8h 05m
@@ -157,7 +158,7 @@ Zweite Aktion im Tab-Menü: „Copy to clipboard" (Eintrag statt Datei-Schreibzu
 
 ```ini
 [main]
-keyword = fl
+keyword = wl
 winevent_log =
 journal_file =
 break_options = 0, 60, 90
@@ -184,12 +185,16 @@ Fallback `journal_file`: `<Dokumente>\logs\Journal.log` über `kpu.shell_known_f
 
 ## Teil 6 — Umsetzungsschritte
 
-1. `keypi_worklog/` mit `lib/worklog.py` anlegen (Fachlogik + Tests zuerst)
-2. `tests/test_worklog.py` + Fixture, bis grün
-3. `keypi_worklog/__init__.py` (Plugin-Klasse nach Mindbox-/PMB-Muster), `res/keypi_worklog.ini`, `res/changelog/1.0.0.md`
-4. `keypi_filelookup/` entfernen (echtes `winevent.log` bleibt lokal, ist gitignored)
-5. Doku: `README.md`, `documentation.md`, `KEYPIRINHA-LEARNINGS.md`, `development-best-practice.md`
-6. DoD: `ruff check .`, `ruff format --check .`, `pytest` — erst dann Push auf `claude/keypi-userstory-review-4an7tw`
+- [x] 0. Testfixture `tests/fixtures/winevent_sample.log` anlegen, echtes `winevent.log` aus der Versionierung nehmen
+- [x] 1. `keypi_worklog/lib/worklog.py` — Fachlogik (Parsing, Sessions, Rundung, Journal)
+- [ ] 2. `tests/test_worklog.py` — Testfälle, bis grün
+- [ ] 3. `keypi_worklog/__init__.py` — Plugin-Klasse nach Mindbox-/PMB-Muster
+- [ ] 4. `res/keypi_worklog.ini` + `res/changelog/1.0.0.md`
+- [ ] 5. `keypi_filelookup/` entfernen
+- [ ] 6. Doku: `README.md`, `documentation.md`, `KEYPIRINHA-LEARNINGS.md`, `development-best-practice.md`
+- [ ] 7. DoD: `ruff check .`, `ruff format --check .`, `pytest` — alles grün
+
+Nach jedem erledigten Schritt: Haken setzen, committen, pushen.
 
 ## Geklärte Punkte
 
