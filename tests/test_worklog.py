@@ -318,6 +318,16 @@ class TestBreakOptions(unittest.TestCase):
         self.assertEqual(1, len(options))
         self.assertEqual(0, options[0]["break_minutes"])
 
+    def test_break_equal_to_the_working_time_is_dropped(self):
+        options = worklog.build_break_options(60)
+        self.assertEqual(
+            [("1h", "ohne Pause")],
+            [(option["hours"], option["break_label"]) for option in options],
+        )
+
+    def test_no_options_without_working_time(self):
+        self.assertEqual([], worklog.build_break_options(0))
+
     def test_custom_breaks(self):
         options = worklog.build_break_options(480, [30, 45])
         self.assertEqual(

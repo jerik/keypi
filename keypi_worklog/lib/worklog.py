@@ -364,12 +364,13 @@ def build_break_options(worked_minutes, breaks=DEFAULT_BREAK_OPTIONS):
 
     Returns:
         List of dicts with break_minutes, net_minutes, hours and break_label.
-        Variants where the break exceeds the working time are dropped.
+        Variants that leave no working time are dropped.
     """
     options = []
     for break_minutes in breaks:
         net = worked_minutes - break_minutes
-        if net < 0:
+        if net <= 0:
+            # Nothing left to log after the break
             continue
         if break_minutes == 0:
             label = "ohne Pause"
