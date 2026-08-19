@@ -189,8 +189,8 @@ Fallback `journal_file`: `<Dokumente>\logs\Journal.log` über `kpu.shell_known_f
 - [x] 1. `keypi_worklog/lib/worklog.py` — Fachlogik (Parsing, Sessions, Rundung, Journal)
 - [x] 2. `tests/test_worklog.py` — Testfälle, bis grün
 - [x] 3. `keypi_worklog/__init__.py` — Plugin-Klasse nach Mindbox-/PMB-Muster
-- [ ] 4. `res/keypi_worklog.ini` + `res/changelog/1.0.0.md`
-- [ ] 5. `keypi_filelookup/` entfernen
+- [x] 4. `res/keypi_worklog.ini` + `res/changelog/1.0.0.md`
+- [x] 5. `keypi_filelookup/` entfernen
 - [ ] 6. Doku: `README.md`, `documentation.md`, `KEYPIRINHA-LEARNINGS.md`, `development-best-practice.md`
 - [ ] 7. DoD: `ruff check .`, `ruff format --check .`, `pytest` — alles grün
 
