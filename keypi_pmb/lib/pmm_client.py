@@ -56,22 +56,22 @@ _ISO_DATE_EXACT = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 class FrontmatterField:
     """A single frontmatter field (not title/tags)."""
 
-    name: str   # Field name as written in the file (original case)
+    name: str  # Field name as written in the file (original case)
     value: str  # Field value (raw string)
-    kind: str   # "jira_key" | "iso_date" | "text"
+    kind: str  # "jira_key" | "iso_date" | "text"
 
 
 @dataclass
 class PmmResult:
     """A PM management file with parsed frontmatter."""
 
-    key: str               # Ticket key derived from filename (e.g. FOO-123)
-    title: str             # From frontmatter 'title' field
-    epic: str | None       # From frontmatter 'epic' field (legacy compat)
-    initiative: str | None # From frontmatter 'initiative' field (legacy compat)
-    tags: list[str]        # From frontmatter 'tags' field
-    file_path: str         # Absolute path to the .md file
-    modified: str          # Last modified date (YYYY-MM-DD)
+    key: str  # Ticket key derived from filename (e.g. FOO-123)
+    title: str  # From frontmatter 'title' field
+    epic: str | None  # From frontmatter 'epic' field (legacy compat)
+    initiative: str | None  # From frontmatter 'initiative' field (legacy compat)
+    tags: list[str]  # From frontmatter 'tags' field
+    file_path: str  # Absolute path to the .md file
+    modified: str  # Last modified date (YYYY-MM-DD)
     fields: list[FrontmatterField] = field(default_factory=list)
     # All non-title, non-tags fields with kind classification.
     # Used for drill-down expansion in keypi_pmb.
