@@ -29,7 +29,7 @@ class WorkLog(kp.Plugin):
     """
 
     # Version - increment with each commit during development
-    VERSION = "1.0.0-dev.3"
+    VERSION = "1.0.0"
 
     # Item categories
     ITEMCAT_QUERY = kp.ItemCategory.USER_BASE + 1

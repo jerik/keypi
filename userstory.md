@@ -192,7 +192,7 @@ Fallback `journal_file`: `<Dokumente>\logs\Journal.log` über `kpu.shell_known_f
 - [x] 4. `res/keypi_worklog.ini` + `res/changelog/1.0.0.md`
 - [x] 5. `keypi_filelookup/` entfernen
 - [x] 6. Doku: `README.md`, `documentation.md`, `KEYPIRINHA-LEARNINGS.md`, `development-best-practice.md`
-- [ ] 7. DoD: `ruff check .`, `ruff format --check .`, `pytest` — alles grün
+- [x] 7. DoD: `ruff check .`, `ruff format --check .`, `pytest` — alles grün
 
 Nach jedem erledigten Schritt: Haken setzen, committen, pushen.
 
