@@ -187,7 +187,7 @@ Fallback `journal_file`: `<Dokumente>\logs\Journal.log` über `kpu.shell_known_f
 
 - [x] 0. Testfixture `tests/fixtures/winevent_sample.log` anlegen, echtes `winevent.log` aus der Versionierung nehmen
 - [x] 1. `keypi_worklog/lib/worklog.py` — Fachlogik (Parsing, Sessions, Rundung, Journal)
-- [ ] 2. `tests/test_worklog.py` — Testfälle, bis grün
+- [x] 2. `tests/test_worklog.py` — Testfälle, bis grün
 - [ ] 3. `keypi_worklog/__init__.py` — Plugin-Klasse nach Mindbox-/PMB-Muster
 - [ ] 4. `res/keypi_worklog.ini` + `res/changelog/1.0.0.md`
 - [ ] 5. `keypi_filelookup/` entfernen
