@@ -42,7 +42,7 @@ class NodeDetail:
     """Details for a single Jira ticket, used for PMM drill-down."""
 
     key: str
-    node_type: str       # epic, story, bug, task, …
+    node_type: str  # epic, story, bug, task, …
     title: str
     status: str | None
     fix_version: str | None

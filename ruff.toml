@@ -1,0 +1,7 @@
+# Ruff configuration for the KeyPi plugin collection.
+# Run before every commit:  ruff check .  &&  ruff format --check .
+
+# keypi_chromehistory holds unfinished experiments (standalone scripts with
+# dashes in the file name, not importable packages). They are excluded until
+# the plugin is reworked into the keypi_<name>/ layout.
+extend-exclude = ["keypi_chromehistory"]

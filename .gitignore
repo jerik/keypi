@@ -26,3 +26,7 @@ Thumbs.db
 
 # Distribution archives
 *.zip
+
+# Local Windows event log exports (personal data, not part of the repo)
+winevent.log
+Journal.log

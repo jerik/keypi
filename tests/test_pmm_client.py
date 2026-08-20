@@ -439,13 +439,17 @@ class TestFormatPmmHelpers:
         """Keys are shown directly (not as 'Epic: KEY'), relying on fields."""
         r = _make_result(
             tags=[],
-            fields=[FrontmatterField(name="umsetzung", value="INT-264", kind="jira_key")],
+            fields=[
+                FrontmatterField(name="umsetzung", value="INT-264", kind="jira_key")
+            ],
         )
         desc = format_pmm_short_desc(r)
         assert "INT-264" in desc
 
     def test_short_desc_fallback_to_modified(self):
-        r = _make_result(epic=None, initiative=None, tags=[], fields=[], modified="2026-01-15")
+        r = _make_result(
+            epic=None, initiative=None, tags=[], fields=[], modified="2026-01-15"
+        )
         desc = format_pmm_short_desc(r)
         assert "2026-01-15" in desc
 
