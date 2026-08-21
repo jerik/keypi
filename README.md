@@ -416,7 +416,7 @@ Each user result offers multiple actions via Tab:
 1. **Open Keypirinha** and type: `wl`
 2. **Press Tab** to list the recent logon events:
    ```
-   Mi 09:04    2026-08-19 · KW 34 · läuft · bisher 8h 05m
+   Mi 09:04    2026-08-19 · KW 34 · bis jetzt 17:09 · 8h 05m
    Di 08:10    2026-08-18 · KW 34 · bis 17:28 · 9h 18m
    ```
 3. **Press Tab** on an entry to see the working time variants:
@@ -433,11 +433,19 @@ Each user result offers multiple actions via Tab:
 
 #### How the working time is calculated
 
-- The session ends at the **logoff event**; a session that is still open ends
-  at the **current time**
-- The **difference** is rounded to the nearest 15 minutes, not the start and
-  end separately: 09:04 to 17:09 is 8h05m and becomes 8h
-- The break is subtracted afterwards
+Every logon event is its own entry. The session ends
+
+- at the **current time** for every logon of **today**
+- at the **last** logoff event of that day for past days
+- at the next logoff event in the log when the day ended after midnight
+
+The **difference** is rounded to the nearest 15 minutes, not the start and end
+separately: 09:04 to 17:09 is 8h05m and becomes 8h. The break is subtracted
+afterwards.
+
+**Reboot during the day:** a restart writes a logoff and a logon event, so the
+day shows up twice. Both entries count up to the current time - pick the one
+the working day actually started with.
 
 #### Multi-Action Menu
 

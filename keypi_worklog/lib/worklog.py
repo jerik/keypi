@@ -201,14 +201,37 @@ def parse_events(
     return events
 
 
+def _stop_after(events, index, start_when):
+    """
+    Find the next stop event that follows a start event in the log.
+
+    Used for sessions that have no stop event on their own day, for example
+    when the working day crossed midnight.
+    """
+    for candidate in reversed(events[:index]):
+        if candidate.kind == "start":
+            # Superseded by a later start without a stop event in between
+            return None
+        if candidate.when >= start_when:
+            return candidate.when
+    return None
+
+
 def build_sessions(events, now=None, max_entries=DEFAULT_MAX_ENTRIES):
     """
     Turn log events into work sessions, newest first.
 
-    Every start event is paired with the next stop event that follows it in
-    time. A start event without such a stop event is a running session and
-    ends at ``now``. If another start event appears first, the session was
-    never closed properly and gets end=None.
+    Every start event becomes its own session, so the user can pick the one
+    the working day really started with. The end of a session is:
+
+    * ``now`` for every start of the current day. A reboot in the middle of
+      the day therefore does not cut the working time short, it only adds one
+      more entry to pick from.
+    * otherwise the **last** stop event of the same day, so a reboot on a past
+      day does not truncate that day either
+    * otherwise the next stop event in the log, which covers days that ended
+      after midnight
+    * otherwise None, when the machine was never shut down properly
 
     Args:
         events: List of LogEvent, newest first
@@ -221,25 +244,29 @@ def build_sessions(events, now=None, max_entries=DEFAULT_MAX_ENTRIES):
     if now is None:
         now = datetime.now()
 
+    stops_by_day = {}
+    for event in events:
+        if event.kind == "stop":
+            stops_by_day.setdefault(event.when.date(), []).append(event.when)
+
+    today = now.date()
     sessions = []
 
     for index, event in enumerate(events):
         if event.kind != "start":
             continue
 
-        end = None
-        running = False
-        for candidate in reversed(events[:index]):
-            if candidate.kind == "start":
-                # Session was superseded by a later start without a stop event
-                break
-            if candidate.when >= event.when:
-                end = candidate.when
-                break
-        else:
-            # Nothing newer in the log: the session is still running
+        if event.when.date() == today:
             end = now
             running = True
+        else:
+            running = False
+            same_day = [
+                when
+                for when in stops_by_day.get(event.when.date(), [])
+                if when >= event.when
+            ]
+            end = max(same_day) if same_day else _stop_after(events, index, event.when)
 
         sessions.append(Session(start=event.when, end=end, running=running))
 
@@ -556,7 +583,9 @@ def describe_session(session, rounding_minutes=DEFAULT_ROUNDING_MINUTES):
 
     rounded = round_minutes(raw, rounding_minutes)
     if session.running:
-        tail = "läuft · bisher {}".format(format_duration(raw))
+        tail = "bis jetzt {} · {}".format(
+            session.end.strftime("%H:%M"), format_duration(raw)
+        )
     else:
         tail = "bis {} · {}".format(session.end.strftime("%H:%M"), format_duration(raw))
 

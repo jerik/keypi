@@ -727,6 +727,23 @@ self.create_item(
 - 💡 **Lesson (WL v1.0.0)**: The test fixture contained exactly that line and
   caught the bug before the first manual test
 
+### Pairing Events Is Not the Same as Measuring a Day
+- ⚠️ **Pitfall**: A reboot writes a **stop and a start** event in the middle of
+  the working day. Pairing every start with the *next* stop makes the entry
+  that began the day end at the reboot - 09:02 with a reboot at 09:57 showed
+  55 minutes instead of the seven hours worked.
+- ✅ **DO**: Decide the end from the **day**, not from the next event
+  ```python
+  if start.date() == now.date():
+      end = now                          # every logon of today counts until now
+  else:
+      end = max(stops_on(start.date()) or [next_stop_after(start)])
+  ```
+- ✅ **DO**: Keep every start as its own entry and let the user pick - guessing
+  which start "really" began the day is a judgement call the log cannot make
+- 💡 **Lesson (WL v1.0.1)**: The bug only shows up on a machine that reboots
+  during the day. Test fixtures must contain that case, not just clean days.
+
 ### Reading User Files Robustly
 - ✅ **DO**: Detect the encoding instead of assuming UTF-8
   ```python
@@ -844,6 +861,7 @@ self.create_item(
 ---
 
 **Version History:**
+- **2026-08-21**: WL v1.0.1 (Reboot during the day - session end from the day, not the next event)
 - **2026-08-19**: WL v1.0.0 (WorkLog - locale free dates, year inference, file appending, stubbed plugin tests)
 - **2026-02-27**: PMB v1.0.0-dev (Direct SQLite access, FTS5 quoting, Tab Drill-Down, Frontmatter parsing)
 - **2026-02-27**: PMB v1.0.0-dev.5 fix (Tab-Chaining auf PMM-Items: loop_on_suggest=True fehlte)

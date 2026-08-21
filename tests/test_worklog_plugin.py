@@ -160,6 +160,39 @@ import keypirinha_util as kpu_stub  # noqa: E402
 from keypi_worklog import WorkLog  # noqa: E402
 
 
+MONTHS_EN = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+
+def _log_line(day, time, kind):
+    """Build one event log line for a real date"""
+    message = "Der Ereignisprotokolldienst wurde {}.".format(
+        "gestartet" if kind == "start" else "beendet"
+    )
+    event_id = 2147489653 if kind == "start" else 2147489654
+    return "{:>8} {} {:02d} {}  {:<35}{} {}".format(
+        1,
+        MONTHS_EN[day.month - 1],
+        day.day,
+        time,
+        "Information EventLog",
+        event_id,
+        message,
+    )
+
+
 class _PluginTestCase(unittest.TestCase):
     """Shared setup: a configured plugin instance on a temp journal"""
 
@@ -298,11 +331,33 @@ class TestBreakOptions(_PluginTestCase):
         targets = [item.target() for item in self.option_items(session)]
         self.assertEqual(len(targets), len(set(targets)))
 
-    def test_running_session_uses_the_current_time(self):
-        session = self.session_items()[0]
-        options = self.option_items(session)
+    def test_todays_entries_use_the_current_time(self):
+        """Regression: a reboot must not cut the working day short"""
+        today = date.today()
+        log = os.path.join(self.folder, "today.log")
+        with open(log, "w", encoding="utf-8") as handle:
+            handle.write(
+                "\n".join(
+                    [
+                        _log_line(today, "09:57", "start"),  # reboot
+                        _log_line(today, "09:57", "stop"),
+                        _log_line(today, "09:02", "start"),
+                    ]
+                )
+                + "\n"
+            )
+        self.plugin.settings.values["winevent_log"] = log
+        self.plugin.on_events(1)
+
+        items = self.session_items()
+        self.assertEqual(2, len(items))
+        self.assertIn("bis jetzt", items[1].short_desc())
+
+        # The entry that started the day must span until now, not until 09:57
+        options = self.option_items(items[1])
         self.assertTrue(options)
-        self.assertIn("08:12", options[0].short_desc())
+        self.assertTrue(options[0].short_desc().startswith("09:02-"))
+        self.assertNotIn("09:02-09:57", options[0].short_desc())
 
     def test_short_session_drops_impossible_breaks(self):
         session = [

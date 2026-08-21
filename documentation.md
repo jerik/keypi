@@ -1145,7 +1145,7 @@ Keypirinha neu starten: `Ctrl + Alt + R`
 1. Tippe: `wl` → `Tab`
 2. Die letzten Anmeldungen werden angezeigt, neueste zuerst:
    ```
-   Mi 09:04    2026-08-19 · KW 34 · läuft · bisher 8h 05m
+   Mi 09:04    2026-08-19 · KW 34 · bis jetzt 17:09 · 8h 05m
    Di 08:10    2026-08-18 · KW 34 · bis 17:28 · 9h 18m
    Mo 09:14    2026-08-17 · KW 34 · bis 16:41 · 7h 27m
    ```
@@ -1164,14 +1164,36 @@ Keypirinha neu starten: `Ctrl + Alt + R`
 
 ### Berechnung der Arbeitszeit
 
-- **Ende der Session:** das zugehörige Abmelde-Event. Läuft die Session noch
-  (heutiger Tag), wird die **aktuelle Uhrzeit** verwendet.
+**Jede Anmeldung ist ein eigener Eintrag.** Das Ende der Session ist:
+
+| Situation | Ende |
+|-----------|------|
+| Anmeldung von **heute** | die **aktuelle Uhrzeit** |
+| Anmeldung an einem vergangenen Tag | das **letzte** Abmelde-Event dieses Tages |
+| Tag endete nach Mitternacht | das nächste Abmelde-Event im Log |
+| Rechner nie sauber heruntergefahren | kein Ende, Eintrag wird entsprechend markiert |
+
 - **Rundung:** die **Differenz** wird auf 15 Minuten kaufmännisch gerundet,
   nicht Start und Ende einzeln. 09:04 bis 17:09 sind 8h 05m und werden zu 8h.
 - **Pause:** wird anschliessend abgezogen. Varianten, bei denen keine
   Arbeitszeit übrig bleibt, werden nicht angezeigt.
-- Jede Anmeldung ist ein eigener Eintrag. Wer mittags aus- und wieder
-  einloggt, sieht für den Tag zwei Einträge und wählt den passenden aus.
+
+### Reboot oder Neuanmeldung im Tagesablauf
+
+Ein Neustart schreibt ein Abmelde- **und** ein Anmelde-Event ins Log. Der Tag
+erscheint dadurch mehrfach in der Liste:
+
+```
+Fr 09:57    2026-08-21 · KW 34 · bis jetzt 16:39 · 6h 42m
+Fr 09:02    2026-08-21 · KW 34 · bis jetzt 16:39 · 7h 37m
+```
+
+Beide Einträge rechnen bis zur aktuellen Uhrzeit. Für den Stundennachweis
+wählst du den Eintrag, mit dem der Arbeitstag wirklich begonnen hat - hier
+`Fr 09:02`. Der Reboot verkürzt die Arbeitszeit also nicht.
+
+Dasselbe gilt für vergangene Tage: dort rechnen alle Anmeldungen des Tages
+bis zur letzten Abmeldung dieses Tages.
 
 ### Anzeige-Format
 
@@ -1180,7 +1202,7 @@ Keypirinha neu starten: `Ctrl + Alt + R`
 | `Mi 09:04` | Wochentag und Uhrzeit der Anmeldung |
 | `2026-08-19` | Datum der Anmeldung |
 | `KW 34` | ISO-Kalenderwoche |
-| `läuft · bisher 8h 05m` | Session ist offen, Zeit bis jetzt |
+| `bis jetzt 16:39 · 8h 05m` | Anmeldung von heute, gerechnet bis zur aktuellen Uhrzeit |
 | `bis 17:28 · 9h 18m` | Abmeldezeit und Dauer |
 | `kein Abmelde-Event im Log` | Session wurde nie sauber beendet |
 
@@ -1260,6 +1282,12 @@ Encoding: UTF-8, UTF-16 und CP1252 werden erkannt.
 
 ## 🔄 Changelog (WorkLog)
 
+### Version 1.0.1 (2026-08-21)
+- **Fix:** Ein Reboot im Tagesablauf verkürzte die Arbeitszeit. Anmeldungen
+  von heute rechnen jetzt immer bis zur aktuellen Uhrzeit, Anmeldungen
+  vergangener Tage bis zur letzten Abmeldung des jeweiligen Tages.
+- **Änderung:** Anzeige `bis jetzt 16:39 · 7h 37m` statt `läuft · bisher 7h 37m`
+
 ### Version 1.0.0 (2026-08-19)
 - **Initial Release:** WorkLog, Nachfolger von `file_lookup`
 - **Neu:** Liste der Anmeldungen mit Wochentag, Datum, KW und Dauer
@@ -1277,4 +1305,4 @@ Encoding: UTF-8, UTF-16 und CP1252 werden erkannt.
 
 ---
 
-**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev | WL v1.0.0
+**Ende** | JQE v1.5.1 | CQE v1.3.0 | US v1.1.0 | MB v1.0.0 | PMB v1.0.0-dev | WL v1.0.1

@@ -173,6 +173,7 @@ class TestBuildSessions(unittest.TestCase):
         self.assertEqual(now, sessions[0].end)
 
     def test_two_sessions_on_the_same_day(self):
+        """Both starts of a past day end at the last stop of that day"""
         events = self._events(
             stop("Aug", 12, "21:51"),
             start("Aug", 12, "19:34"),
@@ -185,7 +186,58 @@ class TestBuildSessions(unittest.TestCase):
         self.assertEqual(datetime(2026, 8, 12, 19, 34), sessions[0].start)
         self.assertEqual(datetime(2026, 8, 12, 21, 51), sessions[0].end)
         self.assertEqual(datetime(2026, 8, 12, 9, 6), sessions[1].start)
-        self.assertEqual(datetime(2026, 8, 12, 17, 13), sessions[1].end)
+        self.assertEqual(datetime(2026, 8, 12, 21, 51), sessions[1].end)
+
+    def test_reboot_today_does_not_cut_the_working_time(self):
+        """A reboot must not end the entry that started the working day"""
+        events = self._events(
+            start("Aug", 19, "09:57"),
+            stop("Aug", 19, "09:57"),
+            start("Aug", 19, "09:02"),
+        )
+        sessions = worklog.build_sessions(events, now=datetime(2026, 8, 19, 16, 39))
+
+        self.assertEqual(2, len(sessions))
+        self.assertEqual(datetime(2026, 8, 19, 16, 39), sessions[0].end)
+        self.assertEqual(datetime(2026, 8, 19, 9, 2), sessions[1].start)
+        self.assertEqual(datetime(2026, 8, 19, 16, 39), sessions[1].end)
+        self.assertEqual(457, worklog.session_minutes(sessions[1]))
+
+    def test_every_start_of_today_ends_now(self):
+        events = self._events(
+            start("Aug", 19, "13:00"),
+            start("Aug", 19, "11:00"),
+            start("Aug", 19, "09:00"),
+        )
+        now = datetime(2026, 8, 19, 17, 0)
+        sessions = worklog.build_sessions(events, now=now)
+
+        self.assertEqual([now, now, now], [session.end for session in sessions])
+        self.assertTrue(all(session.running for session in sessions))
+
+    def test_reboot_on_a_past_day_uses_the_last_stop_of_that_day(self):
+        events = self._events(
+            stop("Aug", 18, "17:38"),
+            start("Aug", 18, "12:10"),
+            stop("Aug", 18, "12:09"),
+            start("Aug", 18, "08:25"),
+        )
+        sessions = worklog.build_sessions(events, now=datetime(2026, 8, 19, 17, 9))
+
+        self.assertEqual(datetime(2026, 8, 18, 17, 38), sessions[0].end)
+        self.assertEqual(datetime(2026, 8, 18, 8, 25), sessions[1].start)
+        self.assertEqual(datetime(2026, 8, 18, 17, 38), sessions[1].end)
+        self.assertEqual(553, worklog.session_minutes(sessions[1]))
+
+    def test_stop_before_the_start_is_not_used(self):
+        """The logoff of the previous day must not end the next start"""
+        events = self._events(
+            start("Aug", 18, "17:00"),
+            stop("Aug", 18, "08:00"),
+        )
+        sessions = worklog.build_sessions(events, now=datetime(2026, 8, 19, 17, 9))
+
+        self.assertIsNone(sessions[0].end)
 
     def test_session_across_midnight(self):
         events = self._events(stop("Aug", 5, "01:06"), start("Aug", 4, "23:43"))
@@ -488,7 +540,7 @@ class TestSessionDescription(unittest.TestCase):
         described = worklog.describe_session(session)
 
         self.assertEqual("Mi 09:04", described["label"])
-        self.assertIn("läuft", described["description"])
+        self.assertIn("bis jetzt 17:09", described["description"])
         self.assertIn("KW 34", described["description"])
         self.assertEqual(485, described["raw_minutes"])
         self.assertEqual(480, described["rounded_minutes"])
